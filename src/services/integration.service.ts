@@ -32,6 +32,7 @@ const appTypeToProviderMap: Record<
     IntegrationProviderEnum.GOOGLE,
   [IntegrationAppTypeEnum.ZOOM_MEETING]: IntegrationProviderEnum.ZOOM,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationProviderEnum.MICROSOFT,
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
 };
 
 /**
@@ -49,6 +50,7 @@ const appTypeToCategoryMap: Record<
   [IntegrationAppTypeEnum.ZOOM_MEETING]:
     IntegrationCategoryEnum.VIDEO_CONFERENCING,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationCategoryEnum.CALENDAR,
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
 };
 
 /**
@@ -61,6 +63,7 @@ const appTypeToTitleMap: Record<IntegrationAppTypeEnum, string> = {
   [IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR]: "Google Meet & Calendar",
   [IntegrationAppTypeEnum.ZOOM_MEETING]: "Zoom",
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: "Outlook Calendar",
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
 };
 
 /**
@@ -188,11 +191,19 @@ export const connectAppService = async (
       authUrl = `${zoomOAuth2Client.authUrl}?` +
         `response_type=code&` +
         `client_id=${zoomOAuth2Client.clientId}&` +
-        `redirect_uri=${encodeURIComponent(zoomOAuth2Client.redirectUri)}&`+
+        `redirect_uri=${encodeURIComponent(zoomOAuth2Client.redirectUri)}&` +
         `state=${encodeURIComponent(state)}`;
       console.log("Zoom OAuth URL:", authUrl);
       break;
 
+    case IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM: // ← NUEVO
+      authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+        `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
+        `response_type=code&` +
+        `redirect_uri=${encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI!)}&` +
+        `scope=${encodeURIComponent(process.env.MICROSOFT_SCOPE!)}&` +
+        `state=${encodeURIComponent(state)}`;
+      break;
     default:
       // Error para tipos no implementados
       throw new BadRequestException("Unsupported app type");
@@ -229,6 +240,9 @@ export const createIntegrationService = async (data: {
   calendar_name?: string;
   zoom_user_id?: string;
   zoom_account_id?: string;
+  // ✅ AGREGAR ESTOS CAMPOS:
+  outlook_calendar_id?: string;          // ← NUEVO
+  outlook_calendar_name?: string;        // ← NUEVO
 }) => {
   const integrationRepository = AppDataSource.getRepository(Integration);
 
@@ -263,6 +277,11 @@ export const createIntegrationService = async (data: {
     ...(data.provider === IntegrationProviderEnum.ZOOM && {
       zoom_user_id: data.zoom_user_id,
       zoom_account_id: data.zoom_account_id
+    }),
+    // ✅ AGREGAR PARA MICROSOFT:
+    ...(data.provider === IntegrationProviderEnum.MICROSOFT && {
+      outlook_calendar_id: data.outlook_calendar_id,
+      outlook_calendar_name: data.outlook_calendar_name
     })
   });
 

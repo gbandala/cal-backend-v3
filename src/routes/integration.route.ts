@@ -7,6 +7,7 @@ import {
   googleOAuthCallbackController,
   zoomOAuthCallbackController,
 } from "../controllers/integration.controller";
+import { microsoftCallbackController } from "../controllers/integration.controller";
 
 const integrationRoutes = Router();
 
@@ -29,6 +30,7 @@ integrationRoutes.get(
 );
 
 integrationRoutes.get("/google/callback", googleOAuthCallbackController);
-integrationRoutes.get("/zoom/callback", zoomOAuthCallbackController); 
+integrationRoutes.get("/zoom/callback", zoomOAuthCallbackController);
+integrationRoutes.get("/microsoft/callback", microsoftCallbackController);
 
 export default integrationRoutes;

@@ -32,7 +32,11 @@ import { google } from "googleapis";
 // import { toZonedTime, formatInTimeZone, format } from "date-fns-tz";
 import { deleteZoomMeetingWithValidation, buildZoomReauthUrl } from '../config/zoom-token-helpers';
 import { zoomOAuth2Client } from '../config/oauth.config';
-import { create } from "domain";
+import {
+  createOutlookEvent,
+  deleteOutlookEvent,
+  validateMicrosoftToken
+} from './outlook.service';
 
 
 /**
@@ -172,35 +176,54 @@ export const createMeetBookingForGuestService = async (
   let meetIntegration: Integration | null = null;
   let calendarIntegration: Integration | null = null;
 
-  if (event.locationType === EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR) {
-    // Para Google Meet: una sola integración sirve para ambos (reunión y calendario)
-    meetIntegration = await integrationRepository.findOne({
-      where: {
-        user: { id: event.user.id },
-        app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
-      },
-    });
-    calendarIntegration = meetIntegration; // Misma integración
+  switch (event.locationType) {
+    case EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR:
+      meetIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: event.user.id },
+          app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
+        },
+      });
+      calendarIntegration = meetIntegration; // Misma integración
+      break;
 
-  } else if (event.locationType === EventLocationEnumType.ZOOM_MEETING) {
-    // Para Zoom: necesitamos DOS integraciones separadas
-    // console.log('paso 3:meet Integration y calendarIntegration se buscarán por separado');
-    // 1. Integración de Zoom (para crear la reunión)
-    meetIntegration = await integrationRepository.findOne({
-      where: {
-        user: { id: event.user.id },
-        app_type: IntegrationAppTypeEnum.ZOOM_MEETING,
-      },
-    });
-    console.log('paso 3:meet Integration:', meetIntegration);
-    // 2. Integración de Google Calendar (para crear el evento de calendario)
-    calendarIntegration = await integrationRepository.findOne({
-      where: {
-        user: { id: event.user.id },
-        app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
-      },
-    });
-    console.log('paso 3:calendar Integration:', calendarIntegration);
+    case EventLocationEnumType.ZOOM_MEETING:
+      // Para Zoom: necesitamos DOS integraciones separadas
+      // console.log('paso 3:meet Integration y calendarIntegration se buscarán por separado');
+      // 1. Integración de Zoom (para crear la reunión)
+      meetIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: event.user.id },
+          app_type: IntegrationAppTypeEnum.ZOOM_MEETING,
+        },
+      });
+      // console.log('paso 3:meet Integration:', meetIntegration);
+      // 2. Integración de Google Calendar (para crear el evento de calendario)
+      calendarIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: event.user.id },
+          app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
+        },
+      });
+      // console.log('paso 3:calendar Integration:', calendarIntegration);
+      break;
+
+    case EventLocationEnumType.OUTLOOK_WITH_ZOOM: // ← NUEVO CASO
+      // Zoom + Outlook Calendar
+      meetIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: event.user.id },
+          app_type: IntegrationAppTypeEnum.ZOOM_MEETING,
+        },
+      });
+
+      calendarIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: event.user.id },
+          app_type: IntegrationAppTypeEnum.OUTLOOK_CALENDAR,
+        },
+      });
+      break;
   }
 
   // VALIDAR QUE TENEMOS LAS INTEGRACIONES NECESARIAS
@@ -221,6 +244,7 @@ export const createMeetBookingForGuestService = async (
   let zoomMeetingId: number | undefined = undefined;
   let zoomJoinUrl: string | undefined = undefined;
   let zoomStartUrl: string | undefined = undefined;
+  let outlookCalendarId: string | undefined = undefined; // ← NUEVO
 
   // PASO 4: OBTENER CLIENTE DE CALENDARIO (siempre Google Calendar)
   const { calendar, calendarType } = await getGoogleCalendarClient(
@@ -311,6 +335,69 @@ export const createMeetBookingForGuestService = async (
     zoomMeetingId = meetingData.id; // ID de Zoom va en campo separado
     zoomJoinUrl = meetingData.join_url;
     zoomStartUrl = meetingData.start_url;
+  } else if (event.locationType === EventLocationEnumType.OUTLOOK_WITH_ZOOM) {
+    // NUEVO: Zoom + Outlook Calendar
+    console.log('paso 5: Creating Outlook + Zoom meeting');
+
+    // 1. Crear meeting de Zoom
+    const { meetingData } = await createZoomMeeting(
+      meetIntegration.access_token,
+      meetIntegration.refresh_token,
+      meetIntegration.expiry_date,
+      {
+        topic: `${guestName} - ${event.title}`,
+        start_time: startTime.toISOString(),
+        duration: Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60)),
+        timezone: timezone,
+        agenda: additionalInfo,
+        settings: {
+          host_video: true,
+          participant_video: true,
+          join_before_host: false,
+          waiting_room: true
+        }
+      }
+    );
+
+    console.log('paso 5: Zoom meeting created for Outlook:', meetingData);
+
+    // 2. Validar token de Microsoft y crear evento en Outlook
+    const validMicrosoftToken = await validateMicrosoftToken(
+      calendarIntegration.access_token,
+      calendarIntegration.refresh_token,
+      calendarIntegration.expiry_date
+    );
+
+    // Usar outlook_calendar_id del evento o de la integración
+    const outlookCalendarId = event.calendar_id ||
+      calendarIntegration.outlook_calendar_id ||
+      'primary';
+
+    const outlookEvent = await createOutlookEvent(
+      validMicrosoftToken,
+      outlookCalendarId,
+      {
+        title: `${guestName} - ${event.title}`,
+        description: additionalInfo,
+        startTime,
+        endTime,
+        timezone,
+        attendeeEmail: guestEmail,
+        organizerEmail: event.user.email,
+        zoomJoinUrl: meetingData.join_url // Incluir link de Zoom
+      }
+    );
+
+    console.log('paso 5: Outlook event created with Zoom link:', outlookEvent);
+
+    // Asignar datos para guardar en BD
+    meetLink = meetingData.join_url;
+    calendarEventId = outlookEvent.id; // ID del evento de Outlook
+    calendarAppType = IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM;
+
+    zoomMeetingId = meetingData.id;
+    zoomJoinUrl = meetingData.join_url;
+    zoomStartUrl = meetingData.start_url;
   }
 
   // PASO 6: GUARDAR REUNIÓN EN BASE DE DATOS
@@ -336,6 +423,14 @@ export const createMeetBookingForGuestService = async (
       zoom_join_url: zoomJoinUrl,
       zoom_start_url: zoomStartUrl,
       // calendar_id debe ser NULL para Zoom según constraint
+    }),
+    // Outlook + Zoom: ambos tipos de campos
+    ...(event.locationType === EventLocationEnumType.OUTLOOK_WITH_ZOOM && {
+      zoom_meeting_id: zoomMeetingId,
+      zoom_join_url: zoomJoinUrl,
+      zoom_start_url: zoomStartUrl,
+      // También guardar el calendar ID de Outlook para cancelación
+      calendar_id: outlookCalendarId,
     })
   });
 
@@ -380,10 +475,6 @@ export const cancelMeetingService = async (meetingId: string) => {
     locationType: meeting.event.locationType
   });
 
-  // if (!effectiveCalendarId) {
-  //   throw new BadRequestException("Meeting does not have a calendar configured");
-  // }
-
   try {
     // PASO 2: BUSCAR INTEGRACIONES NECESARIAS
     let zoomIntegration: Integration | null = null;
@@ -398,9 +489,6 @@ export const cancelMeetingService = async (meetingId: string) => {
           app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
         },
       });
-
-      // Para Google Meet, usar calendar_id de la reunión
-      // effectiveCalendarId = meeting.calendar_id ?? null;
 
     } else if (meeting.event.locationType === EventLocationEnumType.ZOOM_MEETING) {
       // Para Zoom: necesitamos ambas integraciones
@@ -430,6 +518,28 @@ export const cancelMeetingService = async (meetingId: string) => {
         effectiveCalendarId = meeting.event.calendar_id || calendarIntegration.calendar_id || 'primary';
         console.log('paso 2: Updated effective calendar ID for Zoom:', effectiveCalendarId);
       }
+    } else if (meeting.event.locationType === EventLocationEnumType.OUTLOOK_WITH_ZOOM) {
+      // NUEVO: Outlook + Zoom
+      // 1. Integración de Zoom
+      zoomIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: meeting.event.user.id },
+          app_type: IntegrationAppTypeEnum.ZOOM_MEETING,
+        },
+      });
+
+      // 2. Integración de Outlook
+      calendarIntegration = await integrationRepository.findOne({
+        where: {
+          user: { id: meeting.event.user.id },
+          app_type: IntegrationAppTypeEnum.OUTLOOK_CALENDAR,
+        },
+      });
+
+      console.log('paso 2: Outlook + Zoom integrations found:', {
+        zoomIntegration: !!zoomIntegration,
+        outlookIntegration: !!calendarIntegration
+      });
     }
 
     if (!calendarIntegration) {
@@ -576,10 +686,61 @@ export const cancelMeetingService = async (meetingId: string) => {
         console.log('✅ Zoom meeting cancellation completed (some operations may have been skipped)');
       }
 
-    } else {
-      throw new BadRequestException(
-        `Unsupported location type: ${meeting.event.locationType}`
-      );
+    } else if (meeting.event.locationType === EventLocationEnumType.OUTLOOK_WITH_ZOOM) {
+      // Outlook + Zoom: eliminar AMBOS
+
+      if (!zoomIntegration || !calendarIntegration) {
+        throw new BadRequestException("Missing integrations for Outlook + Zoom");
+      }
+
+      let zoomDeletionSuccess = false;
+      let outlookDeletionSuccess = false;
+
+      // 1. Eliminar reunión de Zoom
+      if (meeting.zoom_meeting_id) {
+        try {
+          const validZoomToken = await validateZoomToken(
+            zoomIntegration.access_token,
+            zoomIntegration.refresh_token,
+            zoomIntegration.expiry_date
+          );
+
+          await deleteZoomMeeting(
+            validZoomToken,
+            meeting.zoom_meeting_id.toString(),
+            meeting.event.user.id
+          );
+
+          zoomDeletionSuccess = true;
+          console.log('✅ Zoom meeting deleted successfully');
+
+        } catch (zoomError) {
+          console.warn('⚠️ Failed to delete Zoom meeting:', zoomError);
+          zoomDeletionSuccess = true; // Continuar de todas formas
+        }
+      }
+
+      // 2. Eliminar evento de Outlook
+      try {
+        const validMicrosoftToken = await validateMicrosoftToken(
+          calendarIntegration.access_token,
+          calendarIntegration.refresh_token,
+          calendarIntegration.expiry_date
+        );
+
+        await deleteOutlookEvent(validMicrosoftToken, meeting.calendarEventId);
+
+        outlookDeletionSuccess = true;
+        console.log('✅ Outlook event deleted successfully');
+
+      } catch (outlookError) {
+        console.warn('⚠️ Failed to delete Outlook event:', outlookError);
+        outlookDeletionSuccess = true; // Continuar de todas formas
+      }
+
+      if (zoomDeletionSuccess && outlookDeletionSuccess) {
+        console.log('✅ Outlook + Zoom meeting cancelled successfully');
+      }
     }
 
   } catch (error) {

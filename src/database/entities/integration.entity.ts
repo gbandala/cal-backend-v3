@@ -19,6 +19,7 @@ export enum IntegrationAppTypeEnum {
   GOOGLE_MEET_AND_CALENDAR = "GOOGLE_MEET_AND_CALENDAR",
   ZOOM_MEETING = "ZOOM_MEETING",
   OUTLOOK_CALENDAR = "OUTLOOK_CALENDAR",
+  OUTLOOK_WITH_ZOOM = "OUTLOOK_WITH_ZOOM", // ← AGREGAR ESTO
 }
 
 export enum IntegrationCategoryEnum {
@@ -88,6 +89,13 @@ export class Integration {
   })
   calendar_name?: string;
   // *** FIN NUEVOS CAMPOS ***
+
+  // Agregar campos nuevos
+  @Column({ nullable: true })
+  outlook_calendar_id?: string;
+
+  @Column({ nullable: true })
+  outlook_calendar_name?: string;
 
 
   @Column({ nullable: false })

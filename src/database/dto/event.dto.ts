@@ -33,7 +33,18 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   calendar_name?: string;   // ✅ Opcional, puede ser undefined (no null)
+
+  @IsOptional()
+  @IsString()
+  outlook_calendar_id?: string; // ← NUEVO
+
+  @IsOptional()
+  @IsString()
+  outlook_calendar_name?: string; // ← NUEVO
+
+
 }
+
 
 export class EventIdDTO {
   @IsUUID(4, { message: "Invaild uuid" })
