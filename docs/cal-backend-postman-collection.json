@@ -1,0 +1,742 @@
+{
+  "info": {
+    "name": "Cal Backend API",
+    "description": "Colección completa de endpoints para la API de Cal Backend - Sistema de gestión de calendarios y reuniones",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "cal-backend-api-v1",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "JWT_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USER_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MEETING_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USERNAME",
+      "value": "testuser",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_SLUG",
+      "value": "consulta-30-min-abc1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('USER_ID', response.user.id);",
+                  "    console.log('User registered successfully:', response.user.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Juan Pérez\",\n  \"email\": \"juan.perez@ejemplo.com\",\n  \"password\": \"password123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registra un nuevo usuario en el sistema"
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('JWT_TOKEN', response.accessToken);",
+                  "    pm.collectionVariables.set('USER_ID', response.user.id);",
+                  "    console.log('Login successful, token saved');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"juan.perez@ejemplo.com\",\n  \"password\": \"password123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/login",
+              "host": ["{{BASE_URL}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica un usuario y obtiene el JWT token"
+          }
+        }
+      ],
+      "description": "Endpoints para registro y autenticación de usuarios"
+    },
+    {
+      "name": "📅 Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('EVENT_ID', response.event.id);",
+                  "    pm.collectionVariables.set('EVENT_SLUG', response.event.slug);",
+                  "    console.log('Event created:', response.event.title);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consulta de 30 minutos\",\n  \"description\": \"Reunión de consultoría personalizada\",\n  \"duration\": 30,\n  \"locationType\": \"GOOGLE_MEET_AND_CALENDAR\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/event/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "create"]
+            },
+            "description": "Crea un nuevo evento para el usuario autenticado"
+          }
+        },
+        {
+          "name": "Get User Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/event/all",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "all"]
+            },
+            "description": "Obtiene todos los eventos del usuario autenticado"
+          }
+        },
+        {
+          "name": "Toggle Event Privacy",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/event/toggle-privacy",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "toggle-privacy"]
+            },
+            "description": "Cambia la privacidad del evento (público/privado)"
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/event/{{EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "{{EVENT_ID}}"]
+            },
+            "description": "Elimina un evento específico"
+          }
+        },
+        {
+          "name": "Get Public Events by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/event/public/{{USERNAME}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "public", "{{USERNAME}}"]
+            },
+            "description": "Obtiene eventos públicos de un usuario (sin autenticación)"
+          }
+        },
+        {
+          "name": "Get Public Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/event/public/{{USERNAME}}/{{EVENT_SLUG}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "public", "{{USERNAME}}", "{{EVENT_SLUG}}"]
+            },
+            "description": "Obtiene detalles de un evento público específico"
+          }
+        }
+      ],
+      "description": "Gestión de eventos - crear, listar, modificar y eliminar"
+    },
+    {
+      "name": "⏰ Availability",
+      "item": [
+        {
+          "name": "Get User Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/availability/me",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "me"]
+            },
+            "description": "Obtiene la disponibilidad del usuario autenticado"
+          }
+        },
+        {
+          "name": "Update Availability",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeGap\": 15,\n  \"days\": [\n    {\n      \"day\": \"MONDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"TUESDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"WEDNESDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"THURSDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"FRIDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"SATURDAY\",\n      \"startTime\": \"10:00\",\n      \"endTime\": \"14:00\",\n      \"isAvailable\": false\n    },\n    {\n      \"day\": \"SUNDAY\",\n      \"startTime\": \"10:00\",\n      \"endTime\": \"14:00\",\n      \"isAvailable\": false\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/availability/update",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "update"]
+            },
+            "description": "Actualiza la disponibilidad del usuario"
+          }
+        },
+        {
+          "name": "Get Public Event Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/availability/public/{{EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "public", "{{EVENT_ID}}"]
+            },
+            "description": "Obtiene slots disponibles para un evento público"
+          }
+        }
+      ],
+      "description": "Gestión de disponibilidad horaria"
+    },
+    {
+      "name": "🔗 Integrations",
+      "item": [
+        {
+          "name": "Get User Integrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/all",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "all"]
+            },
+            "description": "Obtiene todas las integraciones del usuario"
+          }
+        },
+        {
+          "name": "Check Integration Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/check/GOOGLE_MEET_AND_CALENDAR",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "check", "GOOGLE_MEET_AND_CALENDAR"]
+            },
+            "description": "Verifica si una integración específica está conectada"
+          }
+        },
+        {
+          "name": "Connect Google Integration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/connect/GOOGLE_MEET_AND_CALENDAR",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "connect", "GOOGLE_MEET_AND_CALENDAR"]
+            },
+            "description": "Obtiene URL de OAuth para conectar Google Calendar/Meet"
+          }
+        },
+        {
+          "name": "Connect Zoom Integration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/connect/ZOOM_MEETING",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "connect", "ZOOM_MEETING"]
+            },
+            "description": "Obtiene URL de OAuth para conectar Zoom"
+          }
+        },
+        {
+          "name": "Google OAuth Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/google/callback?code=example_auth_code&state=example_state",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "google", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "example_auth_code",
+                  "description": "Código de autorización de Google"
+                },
+                {
+                  "key": "state",
+                  "value": "example_state",
+                  "description": "Estado codificado con información del usuario"
+                }
+              ]
+            },
+            "description": "Callback de OAuth de Google (usado automáticamente)"
+          }
+        }
+      ],
+      "description": "Gestión de integraciones con servicios externos"
+    },
+    {
+      "name": "🤝 Meetings",
+      "item": [
+        {
+          "name": "Get User Meetings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/user/all?filter=UPCOMING",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "user", "all"],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "UPCOMING",
+                  "description": "UPCOMING, PAST, CANCELLED"
+                }
+              ]
+            },
+            "description": "Obtiene reuniones del usuario con filtro opcional"
+          }
+        },
+        {
+          "name": "Get Past Meetings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/user/all?filter=PAST",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "user", "all"],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "PAST"
+                }
+              ]
+            },
+            "description": "Obtiene reuniones pasadas del usuario"
+          }
+        },
+        {
+          "name": "Get Cancelled Meetings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/user/all?filter=CANCELLED",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "user", "all"],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "CANCELLED"
+                }
+              ]
+            },
+            "description": "Obtiene reuniones canceladas del usuario"
+          }
+        },
+        {
+          "name": "Create Meeting (Guest)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('MEETING_ID', response.data.meeting.id);",
+                  "    console.log('Meeting created:', response.data.meetLink);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\",\n  \"startTime\": \"2024-02-15T10:00:00.000Z\",\n  \"endTime\": \"2024-02-15T10:30:00.000Z\",\n  \"guestName\": \"María García\",\n  \"guestEmail\": \"maria.garcia@ejemplo.com\",\n  \"additionalInfo\": \"Necesito consultoría sobre estrategia digital para mi startup.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/public/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "public", "create"]
+            },
+            "description": "Crea una nueva reunión como invitado (sin autenticación)"
+          }
+        },
+        {
+          "name": "Cancel Meeting",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/cancel/{{MEETING_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "cancel", "{{MEETING_ID}}"]
+            },
+            "description": "Cancela una reunión específica"
+          }
+        }
+      ],
+      "description": "Gestión de reuniones - crear, listar y cancelar"
+    },
+    {
+      "name": "🔍 Testing Scenarios",
+      "item": [
+        {
+          "name": "Complete Flow - Register to Meeting",
+          "item": [
+            {
+              "name": "1. Register New User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Test User Flow\",\n  \"email\": \"testflow@ejemplo.com\",\n  \"password\": \"testpassword123\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/auth/register",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["auth", "register"]
+                }
+              }
+            },
+            {
+              "name": "2. Login User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"testflow@ejemplo.com\",\n  \"password\": \"testpassword123\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/auth/login",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "3. Create Event",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Demo Meeting\",\n  \"description\": \"Reunión de demostración\",\n  \"duration\": 30,\n  \"locationType\": \"GOOGLE_MEET_AND_CALENDAR\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/event/create",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["event", "create"]
+                }
+              }
+            },
+            {
+              "name": "4. Update Availability",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"timeGap\": 30,\n  \"days\": [\n    {\n      \"day\": \"MONDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/availability/update",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["availability", "update"]
+                }
+              }
+            },
+            {
+              "name": "5. Check Available Slots",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/availability/public/{{EVENT_ID}}",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["availability", "public", "{{EVENT_ID}}"]
+                }
+              }
+            }
+          ],
+          "description": "Flujo completo desde registro hasta verificación de disponibilidad"
+        }
+      ],
+      "description": "Escenarios de testing completos"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{JWT_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script global",
+          "console.log('Making request to:', pm.request.url);",
+          "",
+          "// Verificar si el token está presente para rutas protegidas",
+          "const protectedPaths = ['/event/', '/availability/me', '/availability/update', '/integration/', '/meeting/user'];",
+          "const currentPath = pm.request.url.getPath();",
+          "const needsAuth = protectedPaths.some(path => currentPath.includes(path));",
+          "",
+          "if (needsAuth && !pm.collectionVariables.get('JWT_TOKEN')) {",
+          "    console.warn('⚠️ This endpoint requires authentication. Please login first.');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Post-request script global",
+          "const statusCode = pm.response.code;",
+          "",
+          "if (statusCode >= 200 && statusCode < 300) {",
+          "    console.log('✅ Request successful:', statusCode);",
+          "} else if (statusCode >= 400 && statusCode < 500) {",
+          "    console.log('❌ Client error:', statusCode);",
+          "    console.log('Response:', pm.response.text());",
+          "} else if (statusCode >= 500) {",
+          "    console.log('🔥 Server error:', statusCode);",
+          "    console.log('Response:', pm.response.text());",
+          "}",
+          "",
+          "// Test básico de respuesta",
+          "pm.test('Response time is less than 2000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "pm.test('Response has valid JSON format', function () {",
+          "    try {",
+          "        pm.response.json();",
+          "        pm.expect(true).to.be.true;",
+          "    } catch (e) {",
+          "        pm.expect.fail('Response is not valid JSON');",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,1149 @@
+{
+  "info": {
+    "name": "Cal Backend API v2 - With Calendars",
+    "description": "Colección completa de endpoints para la API de Cal Backend - Sistema de gestión de calendarios y reuniones con soporte para calendarios específicos",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "cal-backend-api-v2",
+    "version": "2.0.0"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "JWT_TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USER_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "MEETING_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "USERNAME",
+      "value": "testuser",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_SLUG",
+      "value": "consulta-30-min-abc1",
+      "type": "string"
+    },
+    {
+      "key": "CALENDAR_ID",
+      "value": "primary",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('USER_ID', response.user.id);",
+                  "    console.log('User registered successfully:', response.user.email);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Juan Pérez\",\n  \"email\": \"dr.juan.perez@ejemplo.com\",\n  \"password\": \"password123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/register",
+              "host": ["{{BASE_URL}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Registra un nuevo usuario en el sistema"
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('JWT_TOKEN', response.accessToken);",
+                  "    pm.collectionVariables.set('USER_ID', response.user.id);",
+                  "    console.log('Login successful, token saved');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"dr.juan.perez@ejemplo.com\",\n  \"password\": \"password123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/login",
+              "host": ["{{BASE_URL}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica un usuario y obtiene el JWT token"
+          }
+        }
+      ],
+      "description": "Endpoints para registro y autenticación de usuarios"
+    },
+    {
+      "name": "📅 Calendars - NEW!",
+      "item": [
+        {
+          "name": "Get User Calendars",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.data && response.data.length > 0) {",
+                  "        const firstCalendar = response.data[0];",
+                  "        pm.collectionVariables.set('CALENDAR_ID', firstCalendar.id);",
+                  "        console.log('Calendars found:', response.data.length);",
+                  "        console.log('First calendar ID saved:', firstCalendar.id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/calendars",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars"]
+            },
+            "description": "📋 Obtiene lista de calendarios disponibles del usuario autenticado. Si no hay cache, sincroniza automáticamente desde Google."
+          }
+        },
+        {
+          "name": "Get User Calendars - Only Active",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/calendars?onlyActive=true",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars"],
+              "query": [
+                {
+                  "key": "onlyActive",
+                  "value": "true",
+                  "description": "Filtrar solo calendarios activos"
+                }
+              ]
+            },
+            "description": "📋 Obtiene solo calendarios activos del usuario"
+          }
+        },
+        {
+          "name": "Get User Calendars - Only Writable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/calendars?onlyWritable=true&onlyActive=true",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars"],
+              "query": [
+                {
+                  "key": "onlyWritable",
+                  "value": "true",
+                  "description": "Solo calendarios con permisos de escritura"
+                },
+                {
+                  "key": "onlyActive",
+                  "value": "true",
+                  "description": "Solo calendarios activos"
+                }
+              ]
+            },
+            "description": "📝 Obtiene calendarios donde el usuario puede escribir/crear eventos"
+          }
+        },
+        {
+          "name": "Sync Calendars from Google",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"forceRefresh\": true\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/calendars/sync",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars", "sync"]
+            },
+            "description": "🔄 Sincroniza calendarios desde Google Calendar API. forceRefresh=true limpia el cache y sincroniza todo."
+          }
+        },
+        {
+          "name": "Sync Calendars - Incremental",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"forceRefresh\": false\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/calendars/sync",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars", "sync"]
+            },
+            "description": "🔄 Sincronización incremental - mantiene cache existente"
+          }
+        },
+        {
+          "name": "Get Calendar Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/calendars/{{CALENDAR_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars", "{{CALENDAR_ID}}"]
+            },
+            "description": "🔍 Obtiene detalles de un calendario específico por ID"
+          }
+        },
+        {
+          "name": "Get Primary Calendar Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/calendars/primary",
+              "host": ["{{BASE_URL}}"],
+              "path": ["calendars", "primary"]
+            },
+            "description": "🎯 Obtiene detalles del calendario principal del usuario"
+          }
+        }
+      ],
+      "description": "🆕 Nueva funcionalidad - Gestión de calendarios específicos"
+    },
+    {
+      "name": "📅 Events - UPDATED!",
+      "item": [
+        {
+          "name": "Create Event - Default Calendar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('EVENT_ID', response.event.id);",
+                  "    pm.collectionVariables.set('EVENT_SLUG', response.event.slug);",
+                  "    console.log('Event created:', response.event.title);",
+                  "    console.log('Calendar used:', response.event.calendar_id || 'primary');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consulta Médica - 30 min\",\n  \"description\": \"Consulta médica general de 30 minutos\",\n  \"duration\": 30,\n  \"locationType\": \"GOOGLE_MEET_AND_CALENDAR\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/event/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "create"]
+            },
+            "description": "📅 Crea evento en calendario por defecto (primary)"
+          }
+        },
+        {
+          "name": "Create Event - Specific Calendar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('EVENT_ID', response.event.id);",
+                  "    pm.collectionVariables.set('EVENT_SLUG', response.event.slug);",
+                  "    console.log('Event created:', response.event.title);",
+                  "    console.log('Calendar used:', response.event.calendar_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Consulta Especializada - 45 min\",\n  \"description\": \"Consulta especializada en calendario específico\",\n  \"duration\": 45,\n  \"locationType\": \"GOOGLE_MEET_AND_CALENDAR\",\n  \"calendar_id\": \"{{CALENDAR_ID}}\",\n  \"calendar_name\": \"Calendario Consultorio\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/event/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "create"]
+            },
+            "description": "🎯 Crea evento en calendario específico"
+          }
+        },
+        {
+          "name": "Set Event Calendar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calendar_id\": \"{{CALENDAR_ID}}\",\n  \"calendar_name\": \"Calendario Actualizado\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/events/{{EVENT_ID}}/calendar",
+              "host": ["{{BASE_URL}}"],
+              "path": ["events", "{{EVENT_ID}}", "calendar"]
+            },
+            "description": "🔄 Cambia el calendario asignado a un evento existente"
+          }
+        },
+        {
+          "name": "Get User Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/event/all",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "all"]
+            },
+            "description": "📋 Obtiene todos los eventos del usuario (ahora incluye info de calendario)"
+          }
+        },
+        {
+          "name": "Toggle Event Privacy",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/event/toggle-privacy",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "toggle-privacy"]
+            },
+            "description": "🔒 Cambia la privacidad del evento (público/privado)"
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/event/{{EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "{{EVENT_ID}}"]
+            },
+            "description": "🗑️ Elimina un evento específico"
+          }
+        },
+        {
+          "name": "Get Public Events by Username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/event/public/{{USERNAME}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "public", "{{USERNAME}}"]
+            },
+            "description": "🌐 Obtiene eventos públicos de un usuario (sin autenticación)"
+          }
+        },
+        {
+          "name": "Get Public Event Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/event/public/{{USERNAME}}/{{EVENT_SLUG}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["event", "public", "{{USERNAME}}", "{{EVENT_SLUG}}"]
+            },
+            "description": "🔍 Obtiene detalles de un evento público específico"
+          }
+        }
+      ],
+      "description": "📅 Gestión de eventos - ahora con soporte para calendarios específicos"
+    },
+    {
+      "name": "⏰ Availability",
+      "item": [
+        {
+          "name": "Get User Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/availability/me",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "me"]
+            },
+            "description": "⏰ Obtiene la disponibilidad del usuario autenticado"
+          }
+        },
+        {
+          "name": "Update Availability",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timeGap\": 15,\n  \"days\": [\n    {\n      \"day\": \"MONDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"TUESDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"WEDNESDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"THURSDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    },\n    {\n      \"day\": \"FRIDAY\",\n      \"startTime\": \"09:00\",\n      \"endTime\": \"17:00\",\n      \"isAvailable\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/availability/update",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "update"]
+            },
+            "description": "🔄 Actualiza la disponibilidad del usuario"
+          }
+        },
+        {
+          "name": "Get Public Event Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/availability/public/{{EVENT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["availability", "public", "{{EVENT_ID}}"]
+            },
+            "description": "🌐 Obtiene slots disponibles para un evento público"
+          }
+        }
+      ],
+      "description": "⏰ Gestión de disponibilidad horaria"
+    },
+    {
+      "name": "🔗 Integrations",
+      "item": [
+        {
+          "name": "Get User Integrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/all",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "all"]
+            },
+            "description": "🔗 Obtiene todas las integraciones del usuario"
+          }
+        },
+        {
+          "name": "Check Integration Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/check/GOOGLE_MEET_AND_CALENDAR",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "check", "GOOGLE_MEET_AND_CALENDAR"]
+            },
+            "description": "✅ Verifica si una integración específica está conectada"
+          }
+        },
+        {
+          "name": "Connect Google Integration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/connect/GOOGLE_MEET_AND_CALENDAR",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "connect", "GOOGLE_MEET_AND_CALENDAR"]
+            },
+            "description": "🔗 Obtiene URL de OAuth para conectar Google Calendar/Meet"
+          }
+        },
+        {
+          "name": "Google OAuth Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/integration/google/callback?code=example_auth_code&state=example_state",
+              "host": ["{{BASE_URL}}"],
+              "path": ["integration", "google", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "example_auth_code",
+                  "description": "Código de autorización de Google"
+                },
+                {
+                  "key": "state",
+                  "value": "example_state",
+                  "description": "Estado codificado con información del usuario"
+                }
+              ]
+            },
+            "description": "🔄 Callback de OAuth de Google (usado automáticamente)"
+          }
+        }
+      ],
+      "description": "🔗 Gestión de integraciones con servicios externos"
+    },
+    {
+      "name": "🤝 Meetings - UPDATED!",
+      "item": [
+        {
+          "name": "Get User Meetings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/user/all?filter=UPCOMING",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "user", "all"],
+              "query": [
+                {
+                  "key": "filter",
+                  "value": "UPCOMING",
+                  "description": "UPCOMING, PAST, CANCELLED"
+                }
+              ]
+            },
+            "description": "📋 Obtiene reuniones del usuario (ahora incluye calendar_id)"
+          }
+        },
+        {
+          "name": "Create Meeting (Guest) - Uses Event Calendar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('MEETING_ID', response.data.meeting.id);",
+                  "    console.log('Meeting created:', response.data.meetLink);",
+                  "    console.log('Calendar used:', response.data.meeting.calendar_id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\",\n  \"startTime\": \"2024-02-20T10:00:00.000Z\",\n  \"endTime\": \"2024-02-20T10:30:00.000Z\",\n  \"guestName\": \"María García\",\n  \"guestEmail\": \"maria.garcia@ejemplo.com\",\n  \"additionalInfo\": \"Consulta sobre estrategia digital para mi startup. Necesito asesoría en marketing digital.\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/public/create",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "public", "create"]
+            },
+            "description": "🤝 Crea reunión en el calendario configurado del evento"
+          }
+        },
+        {
+          "name": "Cancel Meeting - From Correct Calendar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/meeting/cancel/{{MEETING_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["meeting", "cancel", "{{MEETING_ID}}"]
+            },
+            "description": "❌ Cancela reunión del calendario correcto (usa meeting.calendar_id)"
+          }
+        }
+      ],
+      "description": "🤝 Gestión de reuniones - ahora usa calendarios específicos"
+    },
+    {
+      "name": "🧪 Testing Scenarios - NEW CALENDAR FLOW",
+      "item": [
+        {
+          "name": "FLOW 1: Calendar Setup & Event Creation",
+          "item": [
+            {
+              "name": "1. Login User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('JWT_TOKEN', response.accessToken);",
+                      "    console.log('✅ Step 1: Login successful');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"dr.juan.perez@ejemplo.com\",\n  \"password\": \"password123456\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/auth/login",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "2. Get Available Calendars",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    if (response.data && response.data.length > 0) {",
+                      "        pm.collectionVariables.set('CALENDAR_ID', response.data[0].id);",
+                      "        console.log('✅ Step 2: Found', response.data.length, 'calendars');",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/calendars",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["calendars"]
+                }
+              }
+            },
+            {
+              "name": "3. Create Event with Specific Calendar",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('EVENT_ID', response.event.id);",
+                      "    console.log('✅ Step 3: Event created in calendar:', response.event.calendar_id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Test Event - Specific Calendar\",\n  \"description\": \"Testing event creation with specific calendar\",\n  \"duration\": 30,\n  \"locationType\": \"GOOGLE_MEET_AND_CALENDAR\",\n  \"calendar_id\": \"{{CALENDAR_ID}}\",\n  \"calendar_name\": \"Test Calendar\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/event/create",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["event", "create"]
+                }
+              }
+            },
+            {
+              "name": "4. Verify Event Calendar Assignment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const events = response.data || response.events;",
+                      "    if (events && events.length > 0) {",
+                      "        const lastEvent = events[events.length - 1];",
+                      "        console.log('✅ Step 4: Event calendar verified:', lastEvent.calendar_id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/event/all",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["event", "all"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "FLOW 2: Meeting Creation with Calendar",
+          "item": [
+            {
+              "name": "1. Create Meeting (Uses Event Calendar)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('MEETING_ID', response.data.meeting.id);",
+                      "    console.log('✅ Meeting created in calendar:', response.data.meeting.calendar_id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"eventId\": \"{{EVENT_ID}}\",\n  \"startTime\": \"2024-02-25T14:00:00.000Z\",\n  \"endTime\": \"2024-02-25T14:30:00.000Z\",\n  \"guestName\": \"Test Guest\",\n  \"guestEmail\": \"test.guest@ejemplo.com\",\n  \"additionalInfo\": \"Testing meeting creation with specific calendar\"\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/meeting/public/create",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["meeting", "public", "create"]
+                }
+              }
+            },
+            {
+              "name": "2. Verify Meeting Calendar",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    const meetings = response.data || response.meetings;",
+                      "    if (meetings && meetings.length > 0) {",
+                      "        const lastMeeting = meetings[meetings.length - 1];",
+                      "        console.log('✅ Meeting calendar verified:', lastMeeting.calendar_id);",
+                      "    }",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/meeting/user/all",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["meeting", "user", "all"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "FLOW 3: Calendar Sync Testing",
+          "item": [
+            {
+              "name": "1. Force Sync Calendars",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    console.log('✅ Synced', response.data.synced, 'of', response.data.total, 'calendars');",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"forceRefresh\": true\n}"
+                },
+                "url": {
+                  "raw": "{{BASE_URL}}/calendars/sync",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["calendars", "sync"]
+                }
+              }
+            },
+            {
+              "name": "2. Verify Synced Calendars",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    const response = pm.response.json();",
+                      "    console.log('✅ Total calendars after sync:', response.data.length);",
+                      "    response.data.forEach((cal, i) => {",
+                      "        console.log(`${i+1}. ${cal.name} (${cal.id}) - Primary: ${cal.isPrimary}`);",
+                      "    });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{JWT_TOKEN}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/calendars",
+                  "host": ["{{BASE_URL}}"],
+                  "path": ["calendars"]
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "description": "🧪 Flujos de testing para la nueva funcionalidad de calendarios"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{JWT_TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script global",
+          "console.log('🚀 Making request to:', pm.request.url);",
+          "",
+          "// Verificar si el token está presente para rutas protegidas",
+          "const protectedPaths = ['/event/', '/availability/me', '/availability/update', '/integration/', '/meeting/user', '/calendars'];",
+          "const currentPath = pm.request.url.getPath();",
+          "const needsAuth = protectedPaths.some(path => currentPath.includes(path));",
+          "",
+          "if (needsAuth && !pm.collectionVariables.get('JWT_TOKEN')) {",
+          "    console.warn('⚠️ This endpoint requires authentication. Please login first.');",
+          "}",
+          "",
+          "// Log current calendar ID if set",
+          "const calendarId = pm.collectionVariables.get('CALENDAR_ID');",
+          "if (calendarId && currentPath.includes('calendar')) {",
+          "    console.log('📅 Using calendar ID:', calendarId);",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Post-request script global",
+          "const statusCode = pm.response.code;",
+          "",
+          "if (statusCode >= 200 && statusCode < 300) {",
+          "    console.log('✅ Request successful:', statusCode);",
+          "",
+          "    // Log calendar info if present in response",
+          "    try {",
+          "        const response = pm.response.json();",
+          "        if (response.data && Array.isArray(response.data)) {",
+          "            response.data.forEach(item => {",
+          "                if (item.calendar_id || item.calendarId) {",
+          "                    console.log('📅 Calendar info:', item.calendar_id || item.calendarId);",
+          "                }",
+          "            });",
+          "        } else if (response.event && response.event.calendar_id) {",
+          "            console.log('📅 Event calendar:', response.event.calendar_id);",
+          "        } else if (response.data && response.data.meeting && response.data.meeting.calendar_id) {",
+          "            console.log('📅 Meeting calendar:', response.data.meeting.calendar_id);",
+          "        }",
+          "    } catch (e) {",
+          "        // Response is not JSON or doesn't have calendar info",
+          "    }",
+          "",
+          "} else if (statusCode >= 400 && statusCode < 500) {",
+          "    console.log('❌ Client error:', statusCode);",
+          "    console.log('Response:', pm.response.text());",
+          "} else if (statusCode >= 500) {",
+          "    console.log('🔥 Server error:', statusCode);",
+          "    console.log('Response:', pm.response.text());",
+          "}",
+          "",
+          "// Test básico de respuesta",
+          "pm.test('Response time is less than 3000ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+          "});",
+          "",
+          "if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('application/json')) {",
+          "    pm.test('Response has valid JSON format', function () {",
+          "        try {",
+          "            pm.response.json();",
+          "            pm.expect(true).to.be.true;",
+          "        } catch (e) {",
+          "            pm.expect.fail('Response is not valid JSON');",
+          "        }",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ]
+}

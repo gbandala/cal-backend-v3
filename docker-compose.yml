@@ -1,0 +1,38 @@
+
+
+services:
+  # 🚀 SERVICIO PRINCIPAL DE LA API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: cal-backend-api
+    ports:
+      - "8000:8000"
+    
+    # 🔧 USAR .env.production EN EC2
+    env_file:
+      - .env.production
+    
+    # 🌍 Variables de entorno adicionales
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      
+    # 📁 Volúmenes para persistencia
+    volumes:
+      - ./logs:/app/logs:rw
+      - ./tmp:/app/tmp:rw
+    
+    # 🔄 Política de reinicio
+    restart: unless-stopped
+    
+    # 🔍 Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    

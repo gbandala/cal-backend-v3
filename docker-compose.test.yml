@@ -1,0 +1,38 @@
+
+
+services:
+  # 🧪 SERVICIO DE TESTING LOCAL
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: cal-backend-test
+    ports:
+      - "8000:8000"
+    
+    # 🔧 USAR .env.local PARA TESTING
+    env_file:
+      - .env.local
+    
+    # 🌍 Variables de entorno para testing
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      
+    # 📁 Volúmenes para testing
+    volumes:
+      - ./logs:/app/logs:rw
+      - ./tmp:/app/tmp:rw
+    
+    # 🔄 Política de reinicio para testing
+    restart: "no"  # No reiniciar automáticamente en testing
+    
+    # 🔍 Health check más frecuente para testing
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    
