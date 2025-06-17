@@ -1,595 +1,809 @@
-# 🔌 Documentación de API - Cal Backend V2
+# 🔌 Documentación de API - Cal Backend v3
 
-> Documentación completa de todos los endpoints disponibles en Cal Backend V2
+> **Documentación completa de endpoints, autenticación y ejemplos de uso**
 
-## 📋 Índice
+## 📋 Tabla de Contenidos
 
-- [Autenticación](#-autenticación)
-- [Eventos](#-eventos)
-- [Disponibilidad](#-disponibilidad)
-- [Integraciones](#-integraciones)  
-- [Reuniones](#-reuniones)
-- [Modelos de Datos](#-modelos-de-datos)
-- [Códigos de Error](#-códigos-de-error)
+1. [Información General](#-información-general)
+2. [Autenticación](#-autenticación)
+3. [Endpoints de Usuarios](#-endpoints-de-usuarios)
+4. [Endpoints de Eventos](#-endpoints-de-eventos)
+5. [Endpoints de Horarios](#-endpoints-de-horarios)
+6. [Endpoints de Reuniones](#-endpoints-de-reuniones)
+7. [Endpoints de Integración OAuth](#-endpoints-de-integración-oauth)
+8. [Endpoints de Calendarios](#-endpoints-de-calendarios)
+9. [Códigos de Estado](#-códigos-de-estado)
+10. [Ejemplos de Uso](#-ejemplos-de-uso)
+
+## 📌 Información General
+
+### Base URL
+```
+http://localhost:8000/api/v1
+```
+
+### Formato de Datos
+- **Request**: JSON
+- **Response**: JSON
+- **Content-Type**: `application/json`
+- **Charset**: UTF-8
+
+### Versionado
+- **Versión actual**: v1
+- **Esquema**: `/api/v{número}`
+
+### Zona Horaria
+- **Por defecto**: UTC
+- **Formato**: ISO 8601 (`YYYY-MM-DDTHH:mm:ss.sssZ`)
+- **Soporte**: IANA timezone names
 
 ## 🔐 Autenticación
 
-### Base URL
-```
-http://localhost:8000/api/auth
+### Tipos de Autenticación
+
+#### 1. JWT Bearer Token
+```http
+Authorization: Bearer <jwt_token>
 ```
 
-### Registrar Usuario
+#### 2. OAuth2 (Google)
+Usado para integración con Google Calendar.
+
+### Flujo de Autenticación
+
+```mermaid
+sequenceDiagram
+    Client->>+API: POST /auth/register
+    API->>-Client: Usuario creado
+    Client->>+API: POST /auth/login
+    API->>-Client: JWT Token
+    Client->>+API: GET /events (with Bearer token)
+    API->>-Client: Lista de eventos
+```
+
+## 👤 Endpoints de Usuarios
+
+### Registro de Usuario
+
 ```http
-POST /register
+POST /auth/register
 ```
 
 **Body:**
 ```json
 {
-  "name": "Dr. Juan Pérez",
-  "email": "dr.juan@ejemplo.com", 
-  "password": "password123"
+  "email": "usuario@ejemplo.com",
+  "password": "password123",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "timezone": "America/Mexico_City"
 }
 ```
 
-**Respuesta exitosa (201):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Usuario registrado exitosamente",
   "data": {
-    "user": {
-      "id": "uuid-generado",
-      "name": "Dr. Juan Pérez",
-      "username": "dr-juan-perez-1234",
-      "email": "dr.juan@ejemplo.com",
-      "imageUrl": null
-    },
-    "token": "jwt-token-aqui"
-  }
+    "id": "uuid-123",
+    "email": "usuario@ejemplo.com",
+    "username": "juan-perez-123",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "timezone": "America/Mexico_City",
+    "createdAt": "2025-06-17T12:00:00.000Z"
+  },
+  "message": "Usuario registrado exitosamente"
 }
 ```
 
-### Iniciar Sesión
+### Login de Usuario
+
 ```http
-POST /login
+POST /auth/login
 ```
 
 **Body:**
 ```json
 {
-  "email": "dr.juan@ejemplo.com",
+  "email": "usuario@ejemplo.com",
   "password": "password123"
 }
 ```
 
-**Respuesta exitosa (200):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Login exitoso",
   "data": {
     "user": {
-      "id": "uuid-del-usuario",
-      "name": "Dr. Juan Pérez",
-      "username": "dr-juan-perez-1234",
-      "email": "dr.juan@ejemplo.com"
+      "id": "uuid-123",
+      "email": "usuario@ejemplo.com",
+      "username": "juan-perez-123",
+      "firstName": "Juan",
+      "lastName": "Pérez"
     },
-    "token": "jwt-token-aqui"
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresIn": "7d"
+  },
+  "message": "Login exitoso"
+}
+```
+
+### Obtener Perfil de Usuario
+
+```http
+GET /auth/profile
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-123",
+    "email": "usuario@ejemplo.com",
+    "username": "juan-perez-123",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "timezone": "America/Mexico_City",
+    "isGoogleConnected": true,
+    "createdAt": "2025-06-17T12:00:00.000Z",
+    "updatedAt": "2025-06-17T12:00:00.000Z"
   }
 }
 ```
 
-## 📅 Eventos
+### Actualizar Perfil
 
-### Base URL
+```http
+PUT /auth/profile
+Authorization: Bearer <token>
 ```
-http://localhost:8000/api/event
+
+**Body:**
+```json
+{
+  "firstName": "Juan Carlos",
+  "lastName": "Pérez García",
+  "timezone": "America/New_York"
+}
+```
+
+## 📅 Endpoints de Eventos
+
+### Listar Eventos del Usuario
+
+```http
+GET /events
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `page` (number): Página (default: 1)
+- `limit` (number): Elementos por página (default: 10)
+- `isActive` (boolean): Solo eventos activos
+- `privacy` (string): `public` | `private`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "events": [
+      {
+        "id": "uuid-456",
+        "title": "Reunión de 30 minutos",
+        "slug": "reunion-30-minutos",
+        "description": "Reunión para discutir proyectos",
+        "duration": 30,
+        "privacy": "public",
+        "locationType": "google_meet",
+        "isActive": true,
+        "calendarId": "primary",
+        "createdAt": "2025-06-17T12:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 1,
+      "totalPages": 1
+    }
+  }
+}
 ```
 
 ### Crear Evento
+
 ```http
-POST /create
-Authorization: Bearer {token}
+POST /events
+Authorization: Bearer <token>
 ```
 
 **Body:**
 ```json
 {
-  "title": "Consulta Médica - 30 min",
-  "description": "Consulta en calendario específico", 
-  "duration": 30,
-  "locationType": "GOOGLE_MEET_AND_CALENDAR",
-  "calendar_id": "consultorio@gmail.com",
-  "calendar_name": "Calendario Consultorio"
+  "title": "Consulta de 45 minutos",
+  "description": "Consulta personalizada",
+  "duration": 45,
+  "privacy": "public",
+  "locationType": "google_meet",
+  "calendarId": "calendar-specific-id"
 }
 ```
 
-**Respuesta exitosa (201):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Evento creado exitosamente",
   "data": {
-    "id": "uuid-del-evento",
-    "title": "Consulta Médica - 30 min",
-    "description": "Consulta en calendario específico",
-    "duration": 30,
-    "slug": "consulta-medica-30-min-abc123",
-    "isPrivate": false,
-    "locationType": "GOOGLE_MEET_AND_CALENDAR",
-    "calendar_id": "consultorio@gmail.com",
-    "calendar_name": "Calendario Consultorio",
+    "id": "uuid-789",
+    "title": "Consulta de 45 minutos",
+    "slug": "consulta-45-minutos",
+    "description": "Consulta personalizada",
+    "duration": 45,
+    "privacy": "public",
+    "locationType": "google_meet",
+    "calendarId": "calendar-specific-id",
+    "isActive": true,
+    "publicUrl": "http://localhost:8000/book/juan-perez-123/consulta-45-minutos",
+    "createdAt": "2025-06-17T12:00:00.000Z"
+  },
+  "message": "Evento creado exitosamente"
+}
+```
+
+### Obtener Evento por ID
+
+```http
+GET /events/{eventId}
+Authorization: Bearer <token>
+```
+
+### Obtener Evento Público por Slug
+
+```http
+GET /public/events/{username}/{slug}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-789",
+    "title": "Consulta de 45 minutos",
+    "description": "Consulta personalizada",
+    "duration": 45,
+    "locationType": "google_meet",
     "user": {
-      "id": "uuid-del-usuario",
-      "username": "dr-juan-perez-1234"
+      "firstName": "Juan",
+      "lastName": "Pérez",
+      "username": "juan-perez-123"
     }
   }
 }
 ```
 
-### Obtener Eventos del Usuario
+### Actualizar Evento
+
 ```http
-GET /all
-Authorization: Bearer {token}
-```
-
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid-del-evento",
-      "title": "Consulta Médica - 30 min",
-      "description": "Consulta en calendario específico",
-      "duration": 30,
-      "slug": "consulta-medica-30-min-abc123",
-      "isPrivate": false,
-      "locationType": "GOOGLE_MEET_AND_CALENDAR",
-      "calendar_id": "consultorio@gmail.com",
-      "calendar_name": "Calendario Consultorio"
-    }
-  ]
-}
-```
-
-### Obtener Eventos Públicos
-```http
-GET /public/{username}
-```
-
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid-del-evento",
-      "title": "Consulta Médica - 30 min",
-      "duration": 30,
-      "slug": "consulta-medica-30-min-abc123",
-      "locationType": "GOOGLE_MEET_AND_CALENDAR"
-    }
-  ]
-}
-```
-
-### Obtener Evento Público Específico
-```http
-GET /public/{username}/{slug}
-```
-
-### Cambiar Privacidad del Evento
-```http
-PUT /toggle-privacy
-Authorization: Bearer {token}
-```
-
-**Body:**
-```json
-{
-  "eventId": "uuid-del-evento"
-}
+PUT /events/{eventId}
+Authorization: Bearer <token>
 ```
 
 ### Eliminar Evento
+
 ```http
-DELETE /{eventId}
-Authorization: Bearer {token}
+DELETE /events/{eventId}
+Authorization: Bearer <token>
 ```
 
-## ⏰ Disponibilidad
+## ⏰ Endpoints de Horarios
 
-### Base URL
-```
-http://localhost:8000/api/availability
-```
+### Obtener Horarios de Usuario
 
-### Obtener Disponibilidad Personal
 ```http
-GET /me?timezone={timezone}&date={date}
-Authorization: Bearer {token}
+GET /schedules
+Authorization: Bearer <token>
 ```
 
-**Parámetros de consulta:**
-- `timezone` (opcional): Zona horaria IANA (ej: `America/Mexico_City`)
-- `date` (opcional): Fecha específica en formato `YYYY-MM-DD`
-
-**Respuesta exitosa (200):**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
-    "id": "uuid-availability",
-    "timeGap": 15,
-    "days": [
+    "schedules": [
       {
-        "id": "uuid-day",
-        "day": "MONDAY", 
-        "startTime": "2025-06-10T09:00:00.000",
-        "endTime": "2025-06-10T17:00:00.000",
-        "isAvailable": true
+        "id": "uuid-schedule",
+        "dayOfWeek": 1,
+        "startTime": "09:00",
+        "endTime": "17:00",
+        "isAvailable": true,
+        "bufferTime": 15
       }
     ]
   }
 }
 ```
 
-### Obtener Disponibilidad para Evento Público
-```http
-GET /public/{eventId}?timezone={timezone}&date={date}
-```
+### Crear/Actualizar Horario
 
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "eventInfo": {
-      "title": "Consulta Médica - 30 min",
-      "duration": 30,
-      "locationType": "GOOGLE_MEET_AND_CALENDAR"
-    },
-    "availableSlots": [
-      {
-        "startTime": "2025-06-10T09:00:00.000",
-        "endTime": "2025-06-10T09:30:00.000"
-      },
-      {
-        "startTime": "2025-06-10T09:45:00.000", 
-        "endTime": "2025-06-10T10:15:00.000"
-      }
-    ]
-  }
-}
-```
-
-### Actualizar Disponibilidad
 ```http
-PUT /update?timezone={timezone}
-Authorization: Bearer {token}
+POST /schedules
+Authorization: Bearer <token>
 ```
 
 **Body:**
 ```json
 {
-  "timeGap": 15,
-  "days": [
+  "schedules": [
     {
-      "day": "MONDAY",
+      "dayOfWeek": 1,
       "startTime": "09:00",
-      "endTime": "17:00", 
-      "isAvailable": true
+      "endTime": "17:00",
+      "isAvailable": true,
+      "bufferTime": 15
     },
     {
-      "day": "TUESDAY",
+      "dayOfWeek": 2,
       "startTime": "10:00",
       "endTime": "16:00",
-      "isAvailable": true
+      "isAvailable": true,
+      "bufferTime": 10
     }
   ]
 }
 ```
 
-## 🔗 Integraciones
+### Obtener Slots Disponibles
 
-### Base URL
-```
-http://localhost:8000/api/integration
-```
-
-### Obtener Todas las Integraciones
 ```http
-GET /all
-Authorization: Bearer {token}
+GET /public/availability/{username}/{eventSlug}
 ```
 
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid-integration",
-      "provider": "GOOGLE",
-      "category": "CALENDAR", 
-      "app_type": "GOOGLE_CALENDAR_AND_MEET",
-      "isConnected": true,
-      "metadata": {
-        "email": "usuario@gmail.com",
-        "calendars": [
-          {
-            "id": "primary",
-            "summary": "usuario@gmail.com"
-          },
-          {
-            "id": "consultorio@gmail.com", 
-            "summary": "Calendario Consultorio"
-          }
-        ]
-      }
-    }
-  ]
-}
-```
+**Query Parameters:**
+- `date` (string): Fecha en formato YYYY-MM-DD
+- `timezone` (string): Zona horaria IANA
 
-### Verificar Estado de Integración
-```http
-GET /check/{appType}
-Authorization: Bearer {token}
-```
-
-**Respuesta exitosa (200):**
+**Response:**
 ```json
 {
   "success": true,
   "data": {
-    "isConnected": true,
-    "provider": "GOOGLE",
-    "lastSync": "2025-06-10T14:30:00.000Z"
-  }
-}
-```
-
-### Obtener URL de Conexión OAuth
-```http
-GET /connect/{appType}
-Authorization: Bearer {token}
-```
-
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "authUrl": "https://accounts.google.com/oauth2/auth?client_id=...&scope=https://www.googleapis.com/auth/calendar..."
-  }
-}
-```
-
-### Callback OAuth de Google
-```http
-GET /google/callback?code={authorization_code}&state={state}
-```
-
-## 🤝 Reuniones
-
-### Base URL
-```
-http://localhost:8000/api/meeting
-```
-
-### Obtener Reuniones del Usuario
-```http
-GET /user/all?filter={filter}
-Authorization: Bearer {token}
-```
-
-**Parámetros de consulta:**
-- `filter`: `upcoming` | `past` | `cancelled` | `all`
-
-**Respuesta exitosa (200):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "uuid-meeting",
-      "guestName": "María García",
-      "guestEmail": "maria@ejemplo.com",
-      "startTime": "2025-06-15T10:00:00.000",
-      "endTime": "2025-06-15T10:30:00.000", 
-      "meetLink": "https://meet.google.com/abc-defg-hij",
-      "status": "SCHEDULED",
-      "additionalInfo": "Primera consulta",
-      "event": {
-        "title": "Consulta Médica - 30 min",
-        "duration": 30
+    "date": "2025-06-17",
+    "timezone": "America/Mexico_City",
+    "slots": [
+      {
+        "startTime": "2025-06-17T09:00:00.000Z",
+        "endTime": "2025-06-17T09:45:00.000Z",
+        "available": true
+      },
+      {
+        "startTime": "2025-06-17T10:00:00.000Z",
+        "endTime": "2025-06-17T10:45:00.000Z",
+        "available": true
       }
-    }
-  ]
+    ]
+  }
 }
 ```
 
-### Crear Reunión Pública
+## 📋 Endpoints de Reuniones
+
+### Programar Reunión
+
 ```http
-POST /public/create
+POST /public/meetings/{username}/{eventSlug}
 ```
 
 **Body:**
 ```json
 {
-  "eventId": "uuid-del-evento",
-  "startTime": "2025-06-15T10:00:00.000Z",
-  "endTime": "2025-06-15T10:30:00.000Z",
-  "guestName": "María García",
-  "guestEmail": "maria@ejemplo.com", 
-  "additionalInfo": "Primera consulta"
+  "startTime": "2025-06-17T09:00:00.000Z",
+  "endTime": "2025-06-17T09:45:00.000Z",
+  "attendee": {
+    "name": "María García",
+    "email": "maria@ejemplo.com",
+    "timezone": "America/Mexico_City"
+  },
+  "notes": "Reunión para discutir el proyecto X"
 }
 ```
 
-**Respuesta exitosa (201):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Reunión creada exitosamente",
   "data": {
     "id": "uuid-meeting",
-    "guestName": "María García",
-    "guestEmail": "maria@ejemplo.com",
-    "startTime": "2025-06-15T10:00:00.000",
-    "endTime": "2025-06-15T10:30:00.000",
-    "meetLink": "https://meet.google.com/abc-defg-hij",
-    "status": "SCHEDULED",
+    "startTime": "2025-06-17T09:00:00.000Z",
+    "endTime": "2025-06-17T09:45:00.000Z",
+    "status": "scheduled",
+    "attendee": {
+      "name": "María García",
+      "email": "maria@ejemplo.com"
+    },
+    "meetingUrl": "https://meet.google.com/abc-defg-hij",
     "calendarEventId": "google-calendar-event-id"
+  },
+  "message": "Reunión programada exitosamente"
+}
+```
+
+### Listar Reuniones del Usuario
+
+```http
+GET /meetings
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `status` (string): `scheduled` | `cancelled` | `completed`
+- `page` (number)
+- `limit` (number)
+- `startDate` (string): Filtrar desde fecha
+- `endDate` (string): Filtrar hasta fecha
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "meetings": [
+      {
+        "id": "uuid-meeting",
+        "startTime": "2025-06-17T09:00:00.000Z",
+        "endTime": "2025-06-17T09:45:00.000Z",
+        "status": "scheduled",
+        "attendee": {
+          "name": "María García",
+          "email": "maria@ejemplo.com"
+        },
+        "event": {
+          "title": "Consulta de 45 minutos",
+          "slug": "consulta-45-minutos"
+        },
+        "meetingUrl": "https://meet.google.com/abc-defg-hij"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 1,
+      "totalPages": 1
+    }
   }
 }
 ```
 
 ### Cancelar Reunión
+
 ```http
-PUT /cancel/{meetingId}
-Authorization: Bearer {token}
+DELETE /meetings/{meetingId}
+Authorization: Bearer <token>
 ```
 
-**Respuesta exitosa (200):**
+**Response:**
 ```json
 {
   "success": true,
-  "message": "Reunión cancelada exitosamente",
+  "message": "Reunión cancelada exitosamente"
+}
+```
+
+## 🔗 Endpoints de Integración OAuth
+
+### Obtener URL de Autorización de Google
+
+```http
+GET /auth/google
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
   "data": {
-    "id": "uuid-meeting",
-    "status": "CANCELLED"
+    "authUrl": "https://accounts.google.com/oauth/authorize?client_id=..."
   }
 }
 ```
 
-## 📊 Modelos de Datos
+### Callback de OAuth (Manejo automático)
 
-### Usuario
-```typescript
-interface User {
-  id: string;           // UUID
-  name: string;         // Nombre completo
-  username: string;     // Username único
-  email: string;        // Email único
-  password: string;     // Hash bcrypt
-  imageUrl?: string;    // URL imagen perfil
-}
+```http
+GET /auth/google/callback?code=authorization_code&state=user_id
 ```
 
-### Evento
-```typescript
-interface Event {
-  id: string;           // UUID
-  title: string;        // Título del evento
-  description?: string; // Descripción opcional
-  duration: number;     // Duración en minutos
-  slug: string;         // Slug único por usuario
-  isPrivate: boolean;   // Privacidad
-  locationType: EventLocationEnum;
-  calendar_id: string;  // ID calendario específico
-  calendar_name?: string; // Nombre calendario
-}
+### Verificar Estado de Conexión
+
+```http
+GET /auth/integrations
+Authorization: Bearer <token>
 ```
 
-### Reunión
-```typescript
-interface Meeting {
-  id: string;              // UUID
-  guestName: string;       // Nombre invitado
-  guestEmail: string;      // Email invitado  
-  additionalInfo?: string; // Info adicional
-  startTime: Date;         // Fecha/hora inicio
-  endTime: Date;           // Fecha/hora fin
-  meetLink: string;        // Enlace Meet
-  calendarEventId: string; // ID evento Google
-  status: MeetingStatus;   // Estado reunión
-}
-```
-
-### Disponibilidad
-```typescript
-interface Availability {
-  id: string;        // UUID
-  timeGap: number;   // Minutos entre reuniones
-  days: DayAvailability[];
-}
-
-interface DayAvailability {
-  id: string;           // UUID
-  day: DayOfWeekEnum;   // Día semana
-  startTime: Date;      // Hora inicio
-  endTime: Date;        // Hora fin  
-  isAvailable: boolean; // Disponible
-}
-```
-
-## ⚠️ Códigos de Error
-
-### Errores de Autenticación
-- `401` - Token inválido o expirado
-- `403` - Permisos insuficientes  
-- `404` - Usuario no encontrado
-
-### Errores de Validación
-- `400` - Datos de entrada inválidos
-- `409` - Conflicto (email/username duplicado)
-- `422` - Error de validación específico
-
-### Errores de Integración
-- `502` - Error en servicio externo (Google)
-- `503` - Servicio no disponible
-- `429` - Límite de requests excedido
-
-### Ejemplo de Respuesta de Error
+**Response:**
 ```json
 {
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Email ya está en uso",
-    "details": {
-      "field": "email",
-      "value": "usuario@ejemplo.com"
+  "success": true,
+  "data": {
+    "google": {
+      "connected": true,
+      "email": "usuario@gmail.com",
+      "connectedAt": "2025-06-17T12:00:00.000Z"
+    },
+    "zoom": {
+      "connected": false
+    },
+    "microsoft": {
+      "connected": false
     }
   }
 }
 ```
 
-## 🌍 Soporte de Zonas Horarias
+### Desconectar Integración
 
-Todos los endpoints que manejan fechas soportan el parámetro `timezone`:
-
-```bash
-# Ejemplos de zonas horarias válidas
-America/Mexico_City
-Europe/Madrid  
-Asia/Tokyo
-America/New_York
-UTC
+```http
+DELETE /auth/integrations/google
+Authorization: Bearer <token>
 ```
 
-**Formato de fechas:**
-- **Input**: ISO 8601 con Z (`2025-06-15T10:00:00.000Z`)
-- **Output**: ISO 8601 sin Z (`2025-06-15T10:00:00.000`) para horario local
+## 📅 Endpoints de Calendarios
 
-## 📝 Notas Importantes
+### Listar Calendarios de Google
 
-1. **Autenticación**: Todos los endpoints marcados con 🔒 requieren header `Authorization: Bearer {token}`
+```http
+GET /calendars
+Authorization: Bearer <token>
+```
 
-2. **Rate Limiting**: Máximo 100 requests por minuto por IP
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "calendars": [
+      {
+        "id": "primary",
+        "name": "Personal",
+        "description": "Calendario principal",
+        "isPrimary": true,
+        "accessRole": "owner"
+      },
+      {
+        "id": "calendar-id-2",
+        "name": "Trabajo",
+        "description": "Calendario de trabajo",
+        "isPrimary": false,
+        "accessRole": "owner"
+      }
+    ]
+  }
+}
+```
 
-3. **CORS**: Configurado para `http://localhost:3000` en desarrollo
+### Seleccionar Calendario por Defecto
 
-4. **Fechas**: Siempre usar formato ISO 8601. El backend maneja automáticamente la conversión UTC/Local
+```http
+PUT /calendars/default
+Authorization: Bearer <token>
+```
 
-5. **Calendarios**: El `calendar_id` debe ser un calendario válido del usuario autenticado
+**Body:**
+```json
+{
+  "calendarId": "calendar-id-2"
+}
+```
 
-6. **Webhooks**: Disponibles para notificaciones de reuniones (próximamente)
+## 🔍 Endpoints de Utilidad
+
+### Health Check
+
+```http
+GET /health
+```
+
+**Response:**
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-06-17T12:00:00.000Z",
+  "version": "3.0.0",
+  "environment": "development"
+}
+```
+
+### Información de la API
+
+```http
+GET /info
+```
+
+**Response:**
+```json
+{
+  "name": "Cal Backend API",
+  "version": "3.0.0",
+  "description": "Sistema de gestión de calendarios",
+  "documentation": "/api/v1/docs"
+}
+```
+
+## 📊 Códigos de Estado
+
+### Códigos de Éxito
+
+| Código | Significado | Uso |
+|--------|-------------|-----|
+| `200` | OK | Operación exitosa |
+| `201` | Created | Recurso creado exitosamente |
+| `204` | No Content | Eliminación exitosa |
+
+### Códigos de Error del Cliente
+
+| Código | Significado | Descripción |
+|--------|-------------|-------------|
+| `400` | Bad Request | Datos de entrada inválidos |
+| `401` | Unauthorized | Token inválido o ausente |
+| `403` | Forbidden | Sin permisos para el recurso |
+| `404` | Not Found | Recurso no encontrado |
+| `409` | Conflict | Conflicto con estado actual |
+| `422` | Unprocessable Entity | Errores de validación |
+| `429` | Too Many Requests | Límite de rate exceeded |
+
+### Códigos de Error del Servidor
+
+| Código | Significado | Descripción |
+|--------|-------------|-------------|
+| `500` | Internal Server Error | Error interno del servidor |
+| `502` | Bad Gateway | Error de integración externa |
+| `503` | Service Unavailable | Servicio temporalmente no disponible |
+
+### Formato de Respuesta de Error
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Los datos proporcionados no son válidos",
+    "details": [
+      {
+        "field": "email",
+        "message": "Email debe ser una dirección válida"
+      }
+    ]
+  },
+  "timestamp": "2025-06-17T12:00:00.000Z"
+}
+```
+
+## 💡 Ejemplos de Uso
+
+### Ejemplo 1: Flujo Completo de Registro y Creación de Evento
+
+```bash
+# 1. Registrar usuario
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "juan@ejemplo.com",
+    "password": "password123",
+    "firstName": "Juan",
+    "lastName": "Pérez"
+  }'
+
+# 2. Login
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "juan@ejemplo.com",
+    "password": "password123"
+  }'
+
+# 3. Crear evento (usar token obtenido en step 2)
+curl -X POST http://localhost:8000/api/v1/events \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "title": "Reunión de 30 minutos",
+    "description": "Reunión para discutir proyectos",
+    "duration": 30,
+    "privacy": "public",
+    "locationType": "google_meet"
+  }'
+```
+
+### Ejemplo 2: Programar una Reunión
+
+```bash
+# 1. Verificar disponibilidad
+curl "http://localhost:8000/api/v1/public/availability/juan-perez-123/reunion-30-minutos?date=2025-06-17&timezone=America/Mexico_City"
+
+# 2. Programar reunión
+curl -X POST http://localhost:8000/api/v1/public/meetings/juan-perez-123/reunion-30-minutos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "startTime": "2025-06-17T09:00:00.000Z",
+    "endTime": "2025-06-17T09:30:00.000Z",
+    "attendee": {
+      "name": "María García",
+      "email": "maria@ejemplo.com",
+      "timezone": "America/Mexico_City"
+    },
+    "notes": "Reunión para discutir el proyecto X"
+  }'
+```
+
+### Ejemplo 3: Configurar Horarios
+
+```bash
+# Configurar horarios de trabajo
+curl -X POST http://localhost:8000/api/v1/schedules \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "schedules": [
+      {
+        "dayOfWeek": 1,
+        "startTime": "09:00",
+        "endTime": "17:00",
+        "isAvailable": true,
+        "bufferTime": 15
+      },
+      {
+        "dayOfWeek": 2,
+        "startTime": "09:00",
+        "endTime": "17:00",
+        "isAvailable": true,
+        "bufferTime": 15
+      }
+    ]
+  }'
+```
+
+## 📝 Rate Limiting
+
+- **Límite general**: 100 requests por minuto por IP
+- **Autenticación**: 10 intentos por minuto por IP
+- **Headers de respuesta**:
+  ```
+  X-RateLimit-Limit: 100
+  X-RateLimit-Remaining: 95
+  X-RateLimit-Reset: 1624363200
+  ```
+
+## 🔒 Seguridad
+
+### Headers de Seguridad
+
+```http
+Content-Security-Policy: default-src 'self'
+X-Frame-Options: DENY
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+```
+
+### Validación de Entrada
+
+- Todos los endpoints validan entrada usando **class-validator**
+- Sanitización automática de datos
+- Validación de tipos TypeScript
+
+### Autenticación JWT
+
+- **Algoritmo**: HS256
+- **Expiración**: Configurable (default: 7 días)
+- **Refresh**: Automático con Google OAuth
 
 ---
 
-Para más información sobre implementación, consulta el [README principal](../README.md) o la [Guía de Configuración](./SETUP.md).
+**📖 Para más ejemplos y casos de uso**, consulta el [README Funcional](FUNCTIONAL_README.md).
+
+*Última actualización: Junio 2025*

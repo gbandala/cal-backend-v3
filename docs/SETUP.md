@@ -1,486 +1,507 @@
-# 🛠️ Guía de Configuración - Cal Backend V2
+# 📖 Guía de Instalación - Cal Backend v3
 
-> Guía completa paso a paso para configurar y ejecutar Cal Backend V2 en tu entorno local
+> **Configuración completa paso a paso para Cal Backend v3**
 
-## 📋 Índice
+## 📋 Tabla de Contenidos
 
-- [Prerrequisitos](#-prerrequisitos)
-- [Instalación](#-instalación)
-- [Configuración de Google Cloud](#-configuración-de-google-cloud)
-- [Configuración de Base de Datos](#-configuración-de-base-de-datos)
-- [Variables de Entorno](#-variables-de-entorno)
-- [Ejecución](#-ejecución)
-- [Verificación](#-verificación)
-- [Solución de Problemas](#-solución-de-problemas)
+1. [Prerrequisitos](#-prerrequisitos)
+2. [Configuración del Entorno](#-configuración-del-entorno)
+3. [Configuración de Google Cloud Console](#-configuración-de-google-cloud-console)
+4. [Configuración de la Base de Datos](#-configuración-de-la-base-de-datos)
+5. [Variables de Entorno](#-variables-de-entorno)
+6. [Instalación y Ejecución](#-instalación-y-ejecución)
+7. [Verificación de la Instalación](#-verificación-de-la-instalación)
+8. [Comandos Útiles](#-comandos-útiles)
+9. [Solución de Problemas](#-solución-de-problemas)
 
 ## 🔧 Prerrequisitos
 
 ### Software Requerido
 
-| Software | Versión Mínima | Comando de Verificación |
-|----------|----------------|-------------------------|
-| **Node.js** | v16.0.0 | `node --version` |
-| **npm** | v8.0.0 | `npm --version` |
-| **PostgreSQL** | v14.0.0 | `psql --version` |
-| **Git** | v2.30.0 | `git --version` |
+| Software | Versión Mínima | Versión Recomendada | Notas |
+|----------|----------------|---------------------|-------|
+| **Node.js** | v16.0.0 | v18.x o superior | Runtime de JavaScript |
+| **npm** | v8.0.0 | v9.x o superior | Gestor de paquetes |
+| **PostgreSQL** | v14.0 | v15.x o superior | Base de datos principal |
+| **Git** | v2.20.0 | Última versión | Control de versiones |
 
-### Instalación de Prerrequisitos
+### Cuentas Requeridas
 
-#### 🟢 Node.js y npm
+- **Google Cloud Console** - Para OAuth2 y APIs de Calendar/Meet
+- **GitHub** - Para clonar el repositorio (si es privado)
 
-**Opción 1: Descarga Oficial**
-```bash
-# Visita https://nodejs.org y descarga la versión LTS
-# O usa el instalador de tu sistema operativo
-```
-
-**Opción 2: Usando nvm (Recomendado)**
-```bash
-# Instalar nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-
-# Reiniciar terminal o ejecutar:
-source ~/.bashrc
-
-# Instalar Node.js LTS
-nvm install --lts
-nvm use --lts
-```
-
-#### 🐘 PostgreSQL
-
-**macOS (Homebrew):**
-```bash
-brew install postgresql@14
-brew services start postgresql@14
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt update
-sudo apt install postgresql-14 postgresql-contrib
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
-**Windows:**
-```bash
-# Descargar desde https://www.postgresql.org/download/windows/
-# O usar chocolatey:
-choco install postgresql14
-```
-
-### Verificación de Instalación
+### Verificación de Prerrequisitos
 
 ```bash
 # Verificar Node.js
-node --version  # Debe mostrar v16.x.x o superior
+node --version
+# Debe mostrar v16.0.0 o superior
 
 # Verificar npm
-npm --version   # Debe mostrar v8.x.x o superior
+npm --version
+# Debe mostrar v8.0.0 o superior
 
 # Verificar PostgreSQL
-psql --version  # Debe mostrar 14.x o superior
+psql --version
+# Debe mostrar v14.0 o superior
 
-# Probar conexión a PostgreSQL
-sudo -u postgres psql -c "SELECT version();"
+# Verificar Git
+git --version
+# Debe mostrar v2.20.0 o superior
 ```
 
-## 📥 Instalación
+## 🌍 Configuración del Entorno
 
 ### 1. Clonar el Repositorio
 
 ```bash
-# Clonar el proyecto
-git clone https://github.com/gbandala/cal-backend-v2.git
+# Opción 1: HTTPS
+git clone https://github.com/gbandala/cal-backend-v3.git
+
+# Opción 2: SSH (recomendado si tienes configuradas las llaves)
+git clone git@github.com:gbandala/cal-backend-v3.git
 
 # Navegar al directorio
-cd cal-backend-v2
-
-# Verificar que estás en la rama correcta
-git branch
+cd cal-backend-v3
 ```
 
 ### 2. Instalar Dependencias
 
 ```bash
-# Instalar dependencias del proyecto
+# Instalar todas las dependencias
 npm install
 
 # Verificar instalación
 npm list --depth=0
 ```
 
-**Dependencias principales instaladas:**
-- express: Framework web
-- typeorm: ORM para base de datos
-- passport: Autenticación
-- bcryptjs: Hash de contraseñas
-- jsonwebtoken: JWT tokens
-- google-apis: Integración Google
-- class-validator: Validación de datos
+### 3. Configurar Node.js (Opcional)
 
-## ☁️ Configuración de Google Cloud
+Si usas **nvm** para gestionar versiones de Node.js:
 
-### 1. Crear Proyecto en Google Cloud Console
+```bash
+# Usar la versión recomendada
+nvm use 18
 
-1. **Acceder a Google Cloud Console:**
-   - Ir a [https://console.cloud.google.com/](https://console.cloud.google.com/)
-   - Iniciar sesión con tu cuenta de Google
+# O instalar si no la tienes
+nvm install 18
+nvm use 18
+```
 
-2. **Crear Nuevo Proyecto:**
-   ```
-   - Clic en el selector de proyectos (esquina superior izquierda)
-   - Clic en "Nuevo Proyecto"
-   - Nombre: "Cal Backend V2" (o el que prefieras)
-   - Clic en "Crear"
-   ```
+## ☁️ Configuración de Google Cloud Console
+
+### 1. Crear Proyecto en Google Cloud
+
+1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un nuevo proyecto o selecciona uno existente
+3. Anota el **Project ID** para uso posterior
 
 ### 2. Habilitar APIs Necesarias
 
 ```bash
-# APIs requeridas para el proyecto:
+# APIs requeridas:
+# - Google Calendar API
+# - Google Drive API (para Meet)
 ```
 
-1. **Google Calendar API:**
-   - Ir a "APIs y servicios" > "Biblioteca"
-   - Buscar "Google Calendar API"
-   - Clic en "Habilitar"
-
-2. **Google Meet API** (opcional pero recomendado):
-   - Buscar "Google Meet API"
-   - Clic en "Habilitar"
+**Pasos en la consola:**
+1. Ve a **APIs & Services > Library**
+2. Busca y habilita:
+   - `Google Calendar API`
+   - `Google Drive API`
 
 ### 3. Configurar OAuth 2.0
 
-1. **Ir a Credenciales:**
-   - "APIs y servicios" > "Credenciales"
-   - Clic en "+ CREAR CREDENCIALES"
-   - Seleccionar "ID de cliente OAuth 2.0"
+#### Crear Credenciales OAuth
 
-2. **Configurar Pantalla de Consentimiento:**
-   ```
-   - Ir a "Pantalla de consentimiento OAuth"
-   - Seleccionar "Externa" (para desarrollo)
-   - Completar información básica:
-     * Nombre de la aplicación: "Cal Backend V2"
-     * Email de soporte: tu-email@ejemplo.com
-     * Dominios autorizados: localhost
-   ```
+1. Ve a **APIs & Services > Credentials**
+2. Clic en **"+ CREATE CREDENTIALS" > OAuth 2.0 Client IDs**
+3. Si es la primera vez, configura la **pantalla de consentimiento OAuth**:
+   - **User Type**: External
+   - **Application name**: Cal Backend v3
+   - **Authorized domains**: Tu dominio (ej: `localhost` para desarrollo)
 
-3. **Crear Credenciales OAuth:**
+#### Configurar Cliente OAuth
+
+1. **Application type**: Web application
+2. **Name**: Cal Backend v3
+3. **Authorized JavaScript origins**:
    ```
-   Tipo de aplicación: Aplicación web
-   Nombre: Cal Backend OAuth
-   
-   URIs de origen autorizados:
-   - http://localhost:8000
-   
-   URIs de redirección autorizados:
-   - http://localhost:8000/api/integration/google/callback
+   http://localhost:8000
+   http://localhost:3000
+   ```
+4. **Authorized redirect URIs**:
+   ```
+   http://localhost:8000/auth/google/callback
    ```
 
-4. **Configurar Scopes:**
-   ```
-   Scopes necesarios:
-   - https://www.googleapis.com/auth/calendar
-   - https://www.googleapis.com/auth/calendar.events
-   - https://www.googleapis.com/auth/userinfo.email
-   - https://www.googleapis.com/auth/userinfo.profile
-   ```
+### 4. Obtener Credenciales
 
-5. **Descargar Credenciales:**
-   - Clic en el ícono de descarga de las credenciales creadas
-   - Guardar el JSON con los Client ID y Client Secret
+Después de crear el cliente OAuth:
+1. Descarga el archivo JSON de credenciales
+2. Anota el **Client ID** y **Client Secret**
 
-## 🗄️ Configuración de Base de Datos
+### 5. Configurar Scopes
 
-### 1. Configurar PostgreSQL
+Los scopes necesarios para el proyecto:
+```
+https://www.googleapis.com/auth/calendar
+https://www.googleapis.com/auth/calendar.events
+```
+
+## 🗄️ Configuración de la Base de Datos
+
+### 1. Instalar PostgreSQL
+
+#### En Ubuntu/Debian:
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+```
+
+#### En macOS (con Homebrew):
+```bash
+brew install postgresql
+brew services start postgresql
+```
+
+#### En Windows:
+Descarga e instala desde [postgresql.org](https://www.postgresql.org/download/windows/)
+
+### 2. Crear Base de Datos y Usuario
 
 ```bash
-# Conectar como usuario postgres
+# Conectar a PostgreSQL como superusuario
 sudo -u postgres psql
 
-# Crear usuario para la aplicación
-CREATE USER cal_user WITH PASSWORD 'tu_password_seguro';
-
-# Crear base de datos
-CREATE DATABASE cal_backend_v2 OWNER cal_user;
-
-# Otorgar privilegios
-GRANT ALL PRIVILEGES ON DATABASE cal_backend_v2 TO cal_user;
-
-# Salir de psql
+# En el prompt de PostgreSQL:
+CREATE DATABASE cal_backend_v3;
+CREATE USER cal_user WITH ENCRYPTED PASSWORD 'tu_password_seguro';
+GRANT ALL PRIVILEGES ON DATABASE cal_backend_v3 TO cal_user;
 \q
 ```
 
-### 2. Verificar Conexión
+### 3. Verificar Conexión
 
 ```bash
 # Probar conexión con el nuevo usuario
-psql -h localhost -U cal_user -d cal_backend_v2
-
-# Si funciona, ver las tablas (debe estar vacío)
-\dt
-
-# Salir
-\q
-```
-
-### 3. Configurar Acceso (si es necesario)
-
-Editar archivo de configuración PostgreSQL:
-
-```bash
-# Ubicación típica del archivo pg_hba.conf:
-# Ubuntu/Debian: /etc/postgresql/14/main/pg_hba.conf
-# macOS (Homebrew): /opt/homebrew/var/postgresql@14/pg_hba.conf
-
-# Agregar línea para acceso local:
-local   cal_backend_v2  cal_user                md5
-host    cal_backend_v2  cal_user    127.0.0.1/32    md5
-```
-
-Reiniciar PostgreSQL:
-```bash
-# Ubuntu/Debian
-sudo systemctl restart postgresql
-
-# macOS (Homebrew)
-brew services restart postgresql@14
+psql -h localhost -U cal_user -d cal_backend_v3
 ```
 
 ## 🔐 Variables de Entorno
 
-### 1. Crear Archivo .env
+### 1. Crear Archivo de Configuración
 
 ```bash
-# Copiar template de ejemplo
+# Copiar template de variables de entorno
 cp .env.example .env
-
-# O crear manualmente
-touch .env
 ```
 
 ### 2. Configurar Variables
 
-Editar el archivo `.env` con tu editor favorito:
+Edita el archivo `.env` con tus valores:
 
-```bash
-# Configuración del servidor
-PORT=8000
+```env
+# ================================
+# CONFIGURACIÓN DEL SERVIDOR
+# ================================
 NODE_ENV=development
-BASE_PATH=/api
+PORT=8000
+API_VERSION=v1
 
-# Base de datos PostgreSQL
-DATABASE_URL=postgresql://cal_user:tu_password_seguro@localhost:5432/cal_backend_v2
+# ================================
+# CONFIGURACIÓN DE BASE DE DATOS
+# ================================
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=cal_user
+DB_PASSWORD=tu_password_seguro
+DB_DATABASE=cal_backend_v3
 
-# JWT Configuration
-JWT_SECRET=tu_jwt_secret_muy_muy_seguro_min_32_caracteres
-JWT_EXPIRES_IN=1d
+# ================================
+# CONFIGURACIÓN JWT
+# ================================
+JWT_SECRET=tu_jwt_secret_muy_seguro_y_largo_minimo_32_caracteres
+JWT_EXPIRES_IN=7d
 
-# Google OAuth (obtenido de Google Cloud Console)
-GOOGLE_CLIENT_ID=123456789-abcdefghijklmnop.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=GOCSPX-tu_client_secret_aqui
-GOOGLE_REDIRECT_URI=http://localhost:8000/api/integration/google/callback
+# ================================
+# CONFIGURACIÓN GOOGLE OAUTH
+# ================================
+GOOGLE_CLIENT_ID=tu_google_client_id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=tu_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
 
-# Frontend Configuration (para CORS)
-FRONTEND_ORIGIN=http://localhost:3000
-FRONTEND_INTEGRATION_URL=http://localhost:3000/integrations
+# ================================
+# CONFIGURACIÓN DE CORS
+# ================================
+CORS_ORIGIN=http://localhost:3000
 
-# Logging (opcional)
+# ================================
+# CONFIGURACIÓN DE LOGS
+# ================================
 LOG_LEVEL=debug
+
+# ================================
+# CONFIGURACIÓN DE ZONA HORARIA
+# ================================
+DEFAULT_TIMEZONE=America/Mexico_City
 ```
 
-### 3. Validar Variables
+### 3. Generar JWT Secret
 
 ```bash
-# Verificar que las variables se carguen correctamente
-node -e "require('dotenv').config(); console.log('PORT:', process.env.PORT);"
+# Generar un secret seguro
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## 🚀 Ejecución
+### 4. Validar Variables
+
+```bash
+# Verificar que todas las variables están configuradas
+npm run env:check
+```
+
+## 🚀 Instalación y Ejecución
 
 ### 1. Configurar Base de Datos
 
 ```bash
-# Ejecutar migraciones (crear tablas)
-npm run db:migration:run
+# Ejecutar migraciones
+npm run typeorm:migration:run
 
-# O si no existe el script, usar TypeORM directamente:
-npx typeorm migration:run -d src/config/database.ts
-```
+# Sincronizar esquema (solo en desarrollo)
+npm run db:sync
 
-### 2. Poblar Datos Iniciales (Opcional)
-
-```bash
-# Si existen seeders
+# Opcional: Insertar datos de prueba
 npm run db:seed
-
-# O crear manualmente algunos datos de prueba
 ```
 
-### 3. Ejecutar en Desarrollo
+### 2. Compilar TypeScript
 
 ```bash
-# Modo desarrollo con hot-reload
-npm run dev
-
-# Debería mostrar algo como:
-# 🚀 Server running on http://localhost:8000
-# 📊 Database connected successfully
-# ✅ Google OAuth configured
-```
-
-### 4. Ejecutar en Producción
-
-```bash
-# Compilar TypeScript
+# Compilar código TypeScript
 npm run build
 
-# Ejecutar aplicación compilada
+# O compilar en modo watch para desarrollo
+npm run build:watch
+```
+
+### 3. Ejecutar la Aplicación
+
+#### Modo Desarrollo
+```bash
+# Ejecutar con hot reload
+npm run dev
+
+# O usar nodemon directamente
+npm run dev:watch
+```
+
+#### Modo Producción
+```bash
+# Compilar y ejecutar
+npm run build
 npm start
 ```
 
-## ✅ Verificación
+### 4. Verificar que el Servidor Está Funcionando
 
-### 1. Verificar Servidor
+La aplicación estará disponible en: `http://localhost:8000`
+
+## ✅ Verificación de la Instalación
+
+### 1. Health Check
 
 ```bash
-# Probar endpoint de salud
-curl http://localhost:8000/api/health
+# Verificar estado del servidor
+curl http://localhost:8000/api/v1/health
 
 # Respuesta esperada:
-# {"success": true, "message": "Server is running", "timestamp": "..."}
+{
+  "status": "ok",
+  "timestamp": "2025-06-17T12:00:00.000Z",
+  "version": "3.0.0"
+}
 ```
 
 ### 2. Verificar Base de Datos
 
 ```bash
-# Conectar a la base de datos
-psql -h localhost -U cal_user -d cal_backend_v2
+# Verificar conexión a la base de datos
+npm run db:check
 
-# Ver tablas creadas
-\dt
-
-# Debería mostrar: users, events, meetings, etc.
+# Verificar migraciones
+npm run typeorm:migration:show
 ```
 
-### 3. Verificar Autenticación
+### 3. Verificar OAuth
 
 ```bash
-# Registrar usuario de prueba
-curl -X POST http://localhost:8000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Usuario Prueba",
-    "email": "prueba@ejemplo.com", 
-    "password": "password123"
-  }'
+# Probar endpoint de autenticación
+curl http://localhost:8000/api/v1/auth/google
 
-# Debería devolver token JWT
+# Debe redirigir a Google OAuth
 ```
 
-### 4. Verificar Integración Google
+### 4. Ejecutar Tests
 
 ```bash
-# Obtener URL de autorización
-curl -X GET http://localhost:8000/api/integration/connect/GOOGLE_CALENDAR_AND_MEET \
-  -H "Authorization: Bearer TU_TOKEN_AQUI"
+# Tests unitarios
+npm test
 
-# Debería devolver URL de Google OAuth
+# Tests de integración
+npm run test:integration
+
+# Coverage
+npm run test:coverage
+```
+
+## 🛠️ Comandos Útiles
+
+### Gestión de Base de Datos
+
+```bash
+# Crear nueva migración
+npm run typeorm:migration:create -- -n NombreMigracion
+
+# Ejecutar migraciones pendientes
+npm run typeorm:migration:run
+
+# Revertir última migración
+npm run typeorm:migration:revert
+
+# Mostrar estado de migraciones
+npm run typeorm:migration:show
+
+# Regenerar esquema (¡Cuidado en producción!)
+npm run db:schema:drop
+npm run db:schema:sync
+```
+
+### Desarrollo
+
+```bash
+# Ejecutar en modo desarrollo con watch
+npm run dev
+
+# Linter
+npm run lint
+npm run lint:fix
+
+# Formatear código
+npm run format
+
+# Verificar tipos de TypeScript
+npm run type-check
+```
+
+### Producción
+
+```bash
+# Build optimizado
+npm run build:prod
+
+# Ejecutar en producción
+npm run start:prod
+
+# PM2 (recomendado para producción)
+npm install -g pm2
+pm2 start ecosystem.config.js
 ```
 
 ## 🔧 Solución de Problemas
 
-### Error: "database does not exist"
+### Error: "Port 8000 already in use"
 
 ```bash
-# Crear base de datos manualmente
-sudo -u postgres createdb -O cal_user cal_backend_v2
-```
-
-### Error: "JWT malformed"
-
-```bash
-# Verificar que JWT_SECRET tenga al menos 32 caracteres
-echo $JWT_SECRET | wc -c
-```
-
-### Error: "Google OAuth invalid_client"
-
-```bash
-# Verificar configuración en Google Cloud Console:
-# 1. Client ID y Secret correctos en .env
-# 2. Redirect URI exactamente igual
-# 3. APIs habilitadas
-```
-
-### Error: "Port already in use"
-
-```bash
-# Verificar qué proceso usa el puerto
+# Encontrar proceso usando el puerto
 lsof -i :8000
 
-# Matar proceso si es necesario
-kill -9 PID_DEL_PROCESO
+# Matar proceso
+kill -9 <PID>
 
 # O cambiar puerto en .env
 PORT=8001
 ```
 
-### Error: "Cannot connect to database"
+### Error: "Database connection failed"
 
 ```bash
-# Verificar que PostgreSQL esté corriendo
+# Verificar que PostgreSQL está corriendo
 sudo systemctl status postgresql
 
-# Verificar credenciales
-psql postgresql://cal_user:password@localhost:5432/cal_backend_v2 -c "SELECT 1;"
+# Reiniciar PostgreSQL
+sudo systemctl restart postgresql
+
+# Verificar variables de entorno
+echo $DB_HOST $DB_PORT $DB_USERNAME
 ```
 
-### Error: "Module not found"
+### Error: "Google OAuth failed"
+
+1. Verificar que las APIs están habilitadas en Google Cloud Console
+2. Verificar que el **redirect URI** es exacto
+3. Verificar que el **Client ID** y **Client Secret** son correctos
+4. Verificar que la pantalla de consentimiento está configurada
+
+### Error: "JWT malformed"
 
 ```bash
-# Limpiar caché de node
-npm cache clean --force
+# Regenerar JWT secret
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# Reinstalar dependencias
+# Actualizar en .env
+JWT_SECRET=nuevo_secret_generado
+```
+
+### Error: "TypeORM entities not found"
+
+```bash
+# Verificar configuración en ormconfig.ts
+# Asegurar que el path de entities es correcto
+
+# Regenerar build
+npm run build
+```
+
+### Logs de Debug
+
+```bash
+# Ejecutar con logs detallados
+DEBUG=* npm run dev
+
+# O configurar nivel específico en .env
+LOG_LEVEL=debug
+```
+
+### Limpiar Cache
+
+```bash
+# Limpiar node_modules
 rm -rf node_modules package-lock.json
 npm install
+
+# Limpiar build
+rm -rf dist
+npm run build
 ```
 
-## 📝 Scripts Disponibles
+## 📞 Soporte
 
-```bash
-# Desarrollo
-npm run dev           # Ejecutar en modo desarrollo
-npm run build         # Compilar TypeScript
-npm start            # Ejecutar en producción
+Si encuentras problemas durante la instalación:
 
-# Base de datos
-npm run db:migration:run     # Ejecutar migraciones
-npm run db:migration:revert  # Revertir última migración
-npm run db:seed             # Poblar datos iniciales
-
-# Testing
-npm test             # Ejecutar tests
-npm run test:watch   # Tests en modo watch
-npm run test:coverage # Coverage de código
-
-# Linting
-npm run lint         # Verificar código
-npm run lint:fix     # Corregir automáticamente
-```
-
-## 🎯 Próximos Pasos
-
-1. **Configurar Frontend**: Conectar con la aplicación frontend React/Vue
-2. **Configurar SSL**: Para producción con certificados HTTPS  
-3. **Configurar PM2**: Para gestión de procesos en producción
-4. **Configurar Nginx**: Como proxy reverso
-5. **Configurar Monitoring**: Logs y métricas de aplicación
+1. Revisa esta guía paso a paso
+2. Verifica que todos los prerrequisitos están instalados
+3. Consulta los logs de error en detalle
+4. Busca en [GitHub Issues](https://github.com/gbandala/cal-backend-v3/issues)
+5. Crea un nuevo issue con:
+   - Descripción del problema
+   - Pasos para reproducir
+   - Logs de error
+   - Información del sistema (OS, versiones de Node.js, etc.)
 
 ---
 
-¿Problemas durante la instalación? Crea un [issue en GitHub](https://github.com/gbandala/cal-backend-v2/issues) con los detalles del error.
+**✅ ¡Instalación completada!** Tu instancia de Cal Backend v3 debería estar funcionando correctamente.
+
+*Última actualización: Junio 2025*

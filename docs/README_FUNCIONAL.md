@@ -1,473 +1,611 @@
-# Sistema de Gestión de Reservas y Calendario
+# ⚡ README Funcional - Cal Backend v3
 
-## 📋 Descripción General
+> **Guía completa de funcionalidades, casos de uso y flujos de trabajo**
 
-Sistema completo de reservas y gestión de calendario que permite a usuarios crear eventos/servicios reservables y gestionar su disponibilidad. La plataforma conecta expertos/consultores con clientes a través de un sistema de reservas automatizado con integraciones externas.
+## 📋 Tabla de Contenidos
 
-**✅ FUNCIONALIDAD ACTUAL v2.0-beta**: Soporte básico para calendarios específicos de Google Calendar, permitiendo crear eventos en calendarios dedicados y gestionar reuniones en el calendario correcto.
+1. [Visión General del Sistema](#-visión-general-del-sistema)
+2. [Funcionalidades Principales](#-funcionalidades-principales)
+3. [Flujos de Trabajo](#-flujos-de-trabajo)
+4. [Casos de Uso Detallados](#-casos-de-uso-detallados)
+5. [Integración con Google](#-integración-con-google)
+6. [Gestión de Calendarios Específicos](#-gestión-de-calendarios-específicos)
+7. [Manejo de Zonas Horarias](#-manejo-de-zonas-horarias)
+8. [Estados y Transiciones](#-estados-y-transiciones)
+9. [Reglas de Negocio](#-reglas-de-negocio)
+10. [Escenarios Avanzados](#-escenarios-avanzados)
 
-## 🏗️ Arquitectura del Sistema
+## 🎯 Visión General del Sistema
 
-El sistema está compuesto por **cuatro servicios principales** que trabajan de manera integrada:
+Cal Backend v3 es un **sistema completo de gestión de calendarios** diseñado para automatizar la programación de reuniones, similar a **Calendly**. El sistema permite a los usuarios crear tipos de eventos personalizados, gestionar su disponibilidad y programar reuniones automáticamente con integración completa a Google Calendar.
 
-1. **[Servicio de Autenticación](#-servicio-de-autenticación)** - Registro y login de usuarios
-2. **[Servicio de Disponibilidad](#-servicio-de-disponibilidad)** - Gestión de horarios disponibles  
-3. **[Servicio de Eventos](#-servicio-de-gestión-de-eventos)** - Creación y gestión de servicios reservables
-4. **[Servicio de Integraciones](#-servicio-de-integraciones)** - Conexiones con servicios externos
+### 🎨 Filosofía de Diseño
 
-## 🔄 Flujo de Usuario Actual
+- **Simplicidad**: Interfaz intuitiva tanto para organizadores como invitados
+- **Flexibilidad**: Configuración granular de horarios y tipos de eventos
+- **Automatización**: Mínima intervención manual en el proceso de programación
+- **Integración**: Sincronización bidireccional con calendarios externos
+- **Escalabilidad**: Arquitectura preparada para múltiples usuarios y eventos
 
+## 🚀 Funcionalidades Principales
+
+### 1. 👤 Gestión de Usuarios
+
+#### Registro y Autenticación
+- **Registro completo** con validación de email único
+- **Generación automática de username** basado en nombre y apellido
+- **Autenticación JWT** con tokens de larga duración
+- **Hash seguro de contraseñas** con bcrypt y salt
+- **Validación robusta** de datos de entrada
+
+#### Perfil de Usuario
+- **Información personal**: Nombre, apellido, email, zona horaria
+- **Configuraciones**: Zona horaria por defecto, idioma preferido
+- **Estado de integraciones**: Google Calendar, Zoom, Microsoft (preparado)
+- **URLs públicas**: Username único para compartir eventos
+
+### 2. 📅 Gestión de Eventos (Event Types)
+
+#### Creación de Tipos de Eventos
+- **Título y descripción** personalizables
+- **Duración variable**: Desde 15 minutos hasta varias horas
+- **Privacidad configurable**: Público o privado
+- **Tipos de ubicación**: Google Meet, Zoom, presencial, personalizado
+- **URLs amigables**: Slugs únicos generados automáticamente
+
+#### Configuración Avanzada
+- **Calendario específico**: Asignación a calendarios particulares de Google
+- **Buffer time**: Tiempo entre reuniones para preparación
+- **Horarios personalizados**: Por tipo de evento si es necesario
+- **Preguntas personalizadas**: Para recopilar información adicional
+
+#### Estados de Eventos
+- **Activo/Inactivo**: Control de disponibilidad pública
+- **Archivado**: Mantener historial sin mostrar públicamente
+- **Eliminación en cascada**: Al eliminar, cancela reuniones programadas
+
+### 3. ⏰ Gestión de Horarios
+
+#### Configuración de Disponibilidad
+- **Por día de la semana**: Configuración independiente para cada día
+- **Horarios flexibles**: Múltiples bloques de tiempo por día
+- **Zonas horarias**: Soporte completo IANA con conversión automática
+- **Buffer time**: Tiempo de preparación entre reuniones
+- **Días no disponibles**: Configuración de días libres o vacaciones
+
+#### Cálculo de Slots Disponibles
+- **Algoritmo inteligente** que considera:
+  - Horarios configurados por el usuario
+  - Reuniones ya programadas
+  - Buffer time entre eventos
+  - Duración del tipo de evento
+  - Zona horaria del invitado
+
+#### Manejo de Excepciones
+- **Días específicos**: Sobrescribir horarios para fechas particulares
+- **Vacaciones**: Bloqueo de períodos completos
+- **Eventos externos**: Integración con calendario de Google para evitar conflictos
+
+### 4. 📋 Gestión de Reuniones
+
+#### Programación de Reuniones
+- **Interfaz pública**: Sin necesidad de autenticación para invitados
+- **Validación en tiempo real**: Verificación de disponibilidad al programar
+- **Información del invitado**: Nombre, email, zona horaria, notas
+- **Creación automática**: Event en Google Calendar con detalles completos
+- **Enlaces de reunión**: Generación automática de Google Meet
+
+#### Estados de Reuniones
+- **Programada (scheduled)**: Reunión confirmada y creada en calendario
+- **Cancelada (cancelled)**: Reunión cancelada, removida del calendario
+- **Completada (completed)**: Reunión finalizada (automático después de la fecha)
+- **No presentado (no_show)**: Marcado manualmente si el invitado no asiste
+
+#### Notificaciones y Recordatorios
+- **Email de confirmación**: Automático al programar
+- **Recordatorios**: 24 horas y 1 hora antes (configurado en Google Calendar)
+- **Cancelación**: Notificación automática a ambas partes
+- **Información de acceso**: Enlaces de Google Meet incluidos
+
+### 5. 🔗 Integraciones Externas
+
+#### Google Calendar Integration
+- **OAuth2 completo**: Autorización segura con scopes específicos
+- **Calendarios múltiples**: Acceso a todos los calendarios del usuario
+- **Sincronización bidireccional**: Crear y eliminar eventos
+- **Refresh automático**: Gestión transparente de tokens
+- **Manejo de errores**: Reconexión automática en caso de problemas
+
+#### Google Meet Integration
+- **Enlaces automáticos**: Generación de links únicos para cada reunión
+- **Configuración automática**: Añadido a eventos de Google Calendar
+- **Acceso directo**: URLs incluidas en emails de confirmación
+
+#### Preparado para Futuras Integraciones
+- **Zoom**: Estructura preparada para integración
+- **Microsoft Teams**: OAuth y endpoints listos
+- **Outlook Calendar**: Compatibilidad planificada
+
+## 🔄 Flujos de Trabajo
+
+### Flujo 1: Registro y Configuración Inicial
+
+```mermaid
+graph TD
+    A[Usuario se registra] --> B[Confirma email]
+    B --> C[Completa perfil]
+    C --> D[Conecta Google Calendar]
+    D --> E[Configura horarios]
+    E --> F[Crea primer evento]
+    F --> G[Comparte URL pública]
 ```
-REGISTRO → CONFIGURAR DISPONIBILIDAD → CONECTAR GOOGLE → CREAR EVENTOS CON CALENDARIO → RECIBIR RESERVAS
+
+**Pasos detallados:**
+
+1. **Registro**: Email, contraseña, nombre, apellido
+2. **Perfil**: Zona horaria, configuraciones personales
+3. **OAuth Google**: Autorización para Calendar y Meet
+4. **Horarios**: Configuración de disponibilidad semanal
+5. **Primer evento**: Creación de tipo de evento básico
+6. **Compartir**: URL pública lista para usar
+
+### Flujo 2: Programación de Reunión por Invitado
+
+```mermaid
+graph TD
+    A[Invitado accede a URL] --> B[Ve información del evento]
+    B --> C[Selecciona fecha]
+    C --> D[Ve slots disponibles]
+    D --> E[Selecciona horario]
+    E --> F[Completa información]
+    F --> G[Confirma reunión]
+    G --> H[Recibe confirmación]
+    H --> I[Evento creado en Google Calendar]
 ```
+
+**Pasos detallados:**
+
+1. **Acceso público**: Sin autenticación requerida
+2. **Información**: Descripción del evento, duración, tipo
+3. **Calendario**: Interfaz de selección de fecha
+4. **Slots**: Horarios disponibles en zona horaria del invitado
+5. **Datos**: Nombre, email, zona horaria, notas opcionales
+6. **Confirmación**: Validación final y programación
+7. **Notificación**: Email automático con detalles
+8. **Sincronización**: Creación en Google Calendar del organizador
+
+### Flujo 3: Gestión de Reuniones por Organizador
+
+```mermaid
+graph TD
+    A[Organizador ve dashboard] --> B[Lista de reuniones]
+    B --> C{Acción requerida?}
+    C -->|Cancelar| D[Cancela reunión]
+    C -->|Reagendar| E[Modifica fecha]
+    C -->|Completar| F[Marca como completada]
+    D --> G[Notifica invitado]
+    E --> H[Actualiza calendario]
+    F --> I[Actualiza estado]
+```
+
+## 📖 Casos de Uso Detallados
+
+### Caso 1: Consultor Freelance
+
+**Personaje**: María, consultora de marketing digital
+
+**Necesidades**:
+- Reuniones de 30 minutos con clientes potenciales
+- Consultas de 60 minutos con clientes existentes
+- Horarios flexibles con algunos días libres
+- Integración con su calendario personal
+
+**Configuración**:
+```json
+{
+  "eventos": [
+    {
+      "titulo": "Consulta Inicial Gratuita",
+      "duracion": 30,
+      "descripcion": "Reunión para conocer tus necesidades de marketing",
+      "privacidad": "publico",
+      "calendario": "trabajo@gmail.com"
+    },
+    {
+      "titulo": "Sesión de Consultoría",
+      "duracion": 60,
+      "descripcion": "Consultoría estratégica personalizada",
+      "privacidad": "publico",
+      "calendario": "trabajo@gmail.com"
+    }
+  ],
+  "horarios": {
+    "lunes": { "inicio": "09:00", "fin": "17:00", "buffer": 15 },
+    "martes": { "inicio": "09:00", "fin": "17:00", "buffer": 15 },
+    "miercoles": { "disponible": false },
+    "jueves": { "inicio": "10:00", "fin": "16:00", "buffer": 15 },
+    "viernes": { "inicio": "09:00", "fin": "15:00", "buffer": 15 }
+  }
+}
+```
+
+**URLs compartidas**:
+- `cal.empresa.com/maria-garcia/consulta-inicial-gratuita`
+- `cal.empresa.com/maria-garcia/sesion-consultoria`
+
+### Caso 2: Equipo de Ventas
+
+**Personaje**: Equipo de ventas de software B2B
+
+**Necesidades**:
+- Demos de producto de 45 minutos
+- Llamadas de seguimiento de 30 minutos
+- Múltiples representantes con horarios diferentes
+- Integración con CRM (futuro)
+
+**Configuración por representante**:
+```json
+{
+  "eventos_compartidos": [
+    {
+      "titulo": "Demo del Producto",
+      "duracion": 45,
+      "descripcion": "Demostración personalizada de nuestra plataforma",
+      "preguntas": [
+        "Tamaño de su empresa",
+        "Presupuesto aproximado",
+        "Urgencia de implementación"
+      ]
+    }
+  ]
+}
+```
+
+### Caso 3: Centro Médico
+
+**Personaje**: Clínica médica con múltiples especialistas
+
+**Necesidades**:
+- Citas de diferentes duraciones según especialidad
+- Horarios específicos por doctor
+- Salas de consulta específicas
+- Integración con sistema de historiales
+
+**Configuración**:
+```json
+{
+  "doctores": [
+    {
+      "nombre": "Dr. García - Medicina General",
+      "eventos": [
+        {
+          "titulo": "Consulta General",
+          "duracion": 30,
+          "ubicacion": "Consultorio 1",
+          "calendario": "consultorio1@clinica.com"
+        }
+      ]
+    },
+    {
+      "nombre": "Dra. López - Cardiología",
+      "eventos": [
+        {
+          "titulo": "Consulta Cardiológica",
+          "duracion": 45,
+          "ubicacion": "Consultorio 3",
+          "calendario": "cardio@clinica.com"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 🔗 Integración con Google
+
+### Configuración OAuth2
+
+#### Scopes Requeridos
+```javascript
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events'
+];
+```
+
+#### Flujo de Autorización
+1. **Redirect a Google**: Usuario autoriza acceso a calendarios
+2. **Callback handling**: Intercambio de código por tokens
+3. **Almacenamiento seguro**: Tokens encriptados en base de datos
+4. **Refresh automático**: Renovación transparente de access tokens
+
+### Gestión de Calendarios
+
+#### Listado de Calendarios
+```javascript
+// Ejemplo de respuesta de Google Calendar API
+{
+  "calendars": [
+    {
+      "id": "primary",
+      "summary": "Personal",
+      "description": "Calendario principal",
+      "accessRole": "owner",
+      "primary": true
+    },
+    {
+      "id": "trabajo@empresa.com",
+      "summary": "Trabajo",
+      "description": "Calendario corporativo",
+      "accessRole": "owner",
+      "primary": false
+    }
+  ]
+}
+```
+
+#### Creación de Eventos
+```javascript
+// Estructura de evento creado en Google Calendar
+{
+  "summary": "Consulta de 30 minutos - María García",
+  "description": "Reunión programada a través de Cal Backend\n\nNotas del invitado: Necesito ayuda con estrategia de redes sociales",
+  "start": {
+    "dateTime": "2025-06-17T09:00:00-06:00",
+    "timeZone": "America/Mexico_City"
+  },
+  "end": {
+    "dateTime": "2025-06-17T09:30:00-06:00",
+    "timeZone": "America/Mexico_City"
+  },
+  "attendees": [
+    {
+      "email": "invitado@ejemplo.com",
+      "displayName": "María García",
+      "responseStatus": "accepted"
+    }
+  ],
+  "conferenceData": {
+    "createRequest": {
+      "requestId": "unique-request-id"
+    }
+  }
+}
+```
+
+## 📅 Gestión de Calendarios Específicos
+
+### Problema Resuelto en v3
+
+**Antes (v2)**: Todos los eventos se creaban en el calendario "primary"
+**Ahora (v3)**: Cada tipo de evento puede asignarse a un calendario específico
+
+### Beneficios
+
+1. **Organización**: Separar eventos personales de profesionales
+2. **Compartir**: Diferentes calendarios para diferentes audiencias
+3. **Permisos**: Control granular de acceso
+4. **Sincronización**: Integración con calendarios de equipo
+
+### Implementación
+
+#### Selección de Calendario por Evento
+```typescript
+interface EventType {
+  id: string;
+  title: string;
+  duration: number;
+  calendarId: string; // Específico de Google Calendar
+  // ... otros campos
+}
+```
+
+#### Validación de Calendarios
+- **Verificación de permisos**: Solo calendarios con acceso de escritura
+- **Validación de existencia**: Calendarios activos y accesibles
+- **Fallback inteligente**: Usar "primary" si el calendario no está disponible
+
+## 🌍 Manejo de Zonas Horarias
+
+### Estrategia Completa
+
+#### Almacenamiento
+- **UTC en base de datos**: Todos los timestamps en UTC
+- **IANA timezone names**: Soporte completo para zonas horarias
+- **Configuración por usuario**: Zona horaria por defecto
+
+#### Conversión Automática
+```typescript
+// Ejemplo de conversión
+const userTimezone = 'America/Mexico_City';
+const inviteeTimezone = 'Europe/Madrid';
+
+// Slot disponible en UTC
+const slotUTC = '2025-06-17T15:00:00.000Z';
+
+// Mostrar al usuario en su zona horaria
+const slotUserTZ = convertToTimezone(slotUTC, userTimezone);
+// Resultado: '2025-06-17T09:00:00-06:00'
+
+// Mostrar al invitado en su zona horaria
+const slotInviteeTZ = convertToTimezone(slotUTC, inviteeTimezone);
+// Resultado: '2025-06-17T17:00:00+02:00'
+```
+
+#### Casos Especiales
+- **Cambio de horario**: Manejo automático de DST (Daylight Saving Time)
+- **Zonas horarias inválidas**: Fallback a UTC con advertencia
+- **Conversión en tiempo real**: Al mostrar slots disponibles
+
+## 📊 Estados y Transiciones
+
+### Estados de Usuario
+```mermaid
+stateDiagram-v2
+    [*] --> Registrado
+    Registrado --> Verificado: confirma_email
+    Verificado --> Configurado: completa_perfil
+    Configurado --> Conectado: autoriza_google
+    Conectado --> Activo: crea_primer_evento
+    Activo --> Inactivo: desactiva_cuenta
+    Inactivo --> Activo: reactiva_cuenta
+```
+
+### Estados de Event Type
+```mermaid
+stateDiagram-v2
+    [*] --> Borrador
+    Borrador --> Activo: publica_evento
+    Activo --> Inactivo: desactiva_evento
+    Inactivo --> Activo: reactiva_evento
+    Activo --> Archivado: archiva_evento
+    Inactivo --> Archivado: archiva_evento
+    Archivado --> [*]: elimina_evento
+```
+
+### Estados de Reunión
+```mermaid
+stateDiagram-v2
+    [*] --> Programada
+    Programada --> Cancelada: cancela_reunion
+    Programada --> Completada: fecha_pasada
+    Programada --> NoShow: marca_ausencia
+    Cancelada --> [*]
+    Completada --> [*]
+    NoShow --> [*]
+```
+
+## ⚖️ Reglas de Negocio
+
+### Validaciones de Programación
+
+#### 1. Disponibilidad de Horarios
+- **Buffer time**: Respetado entre reuniones consecutivas
+- **Horarios configurados**: Solo dentro de ventanas disponibles
+- **Conflictos**: Verificación con eventos existentes en Google Calendar
+- **Anticipación mínima**: No permitir programar con menos de X horas de anticipación
+
+#### 2. Limitaciones de Tiempo
+- **Duración mínima**: 15 minutos
+- **Duración máxima**: 8 horas (configurable)
+- **Slots válidos**: Alineados con intervalos configurados
+- **Fin de día**: No programar reuniones que excedan horario laboral
+
+#### 3. Validaciones de Datos
+- **Email único**: No permitir duplicados en reuniones del mismo día
+- **Información requerida**: Nombre y email siempre obligatorios
+- **Zona horaria**: Validación de nombres IANA
+- **Fechas**: No permitir programar en fechas pasadas
+
+### Políticas de Cancelación
+
+#### Cancelación por Organizador
+- **Notificación automática**: Email al invitado
+- **Eliminación de Google Calendar**: Automática
+- **Registro de auditoría**: Timestamp y razón
+
+#### Cancelación por Invitado
+- **URL de cancelación**: Incluida en email de confirmación
+- **Límite de tiempo**: Configurable (ej: hasta 2 horas antes)
+- **Notificación al organizador**: Email automático
+
+## 🎯 Escenarios Avanzados
+
+### Escenario 1: Reuniones Recurrentes (Futuro)
+
+**Necesidad**: Algunas reuniones necesitan repetirse semanalmente
+
+**Implementación planificada**:
+- **Patrones de recurrencia**: Semanal, quincenal, mensual
+- **Límite de instancias**: Número máximo de repeticiones
+- **Excepciones**: Saltar fechas específicas
+- **Cancelación en cascada**: Opción de cancelar toda la serie
+
+### Escenario 2: Equipos y Disponibilidad Compartida
+
+**Necesidad**: Múltiples personas pueden atender el mismo tipo de evento
+
+**Implementación planificada**:
+```typescript
+interface TeamEvent {
+  id: string;
+  title: string;
+  teamMembers: string[]; // IDs de usuarios
+  assignmentStrategy: 'round_robin' | 'least_busy' | 'manual';
+  requiresApproval: boolean;
+}
+```
+
+### Escenario 3: Salas de Reunión Físicas
+
+**Necesidad**: Reserva de espacios físicos para reuniones presenciales
+
+**Implementación planificada**:
+```typescript
+interface Room {
+  id: string;
+  name: string;
+  capacity: number;
+  equipment: string[];
+  calendarId: string; // Calendar de la sala
+}
+
+interface EventType {
+  // ... campos existentes
+  locationType: 'google_meet' | 'zoom' | 'in_person' | 'phone';
+  roomId?: string; // Para reuniones presenciales
+}
+```
+
+### Escenario 4: Integración con Sistemas de Pago
+
+**Necesidad**: Cobrar por algunas consultas o servicios
+
+**Implementación planificada**:
+```typescript
+interface PaidEvent {
+  // ... campos de EventType
+  isPaid: boolean;
+  price: number;
+  currency: string;
+  paymentMethods: ('stripe' | 'paypal')[];
+  requiresPaymentBeforeBooking: boolean;
+}
+```
+
+### Escenario 5: Analytics y Reportes
+
+**Necesidad**: Métricas sobre uso, conversión y efectividad
+
+**Métricas planificadas**:
+- **Tasa de conversión**: Visitas vs reuniones programadas
+- **Tipos de evento populares**: Más solicitados
+- **Horarios preferidos**: Patrones de programación
+- **Geolocalización**: Zonas horarias de invitados
+- **Cancelaciones**: Razones y patrones
+
+## 🔮 Roadmap Funcional
+
+### Q3 2025
+- ✅ **Calendarios específicos**: Implementado
+- ✅ **Manejo de zonas horarias**: Completado
+- 🚧 **Cache de calendarios**: En desarrollo
+- 🚧 **Dashboard multi-calendario**: En desarrollo
+
+### Q4 2025
+- 📋 **Reuniones recurrentes**: Planificado
+- 📋 **Equipos y disponibilidad compartida**: Planificado
+- 📋 **Integración con Zoom**: Planificado
+- 📋 **Webhooks para integraciones**: Planificado
+
+### Q1 2026
+- 📋 **Salas de reunión físicas**: Planificado
+- 📋 **Analytics avanzados**: Planificado
+- 📋 **API pública completa**: Planificado
+- 📋 **Integración con sistemas de pago**: Planificado
 
 ---
 
-## 🔐 Servicio de Autenticación
+**🎯 Cal Backend v3** está diseñado para crecer y adaptarse a las necesidades cambiantes de gestión de calendarios, manteniendo siempre la simplicidad y eficiencia como principios fundamentales.
 
-### Descripción
-Maneja el registro y autenticación de usuarios con configuración automática de disponibilidad predeterminada.
-
-### Funcionalidades Principales
-
-#### Registro de Usuarios (`registerService`)
-- **Auto-configuración inteligente**: Crea disponibilidad L-V 9AM-5PM automáticamente
-- **Username único**: Genera automáticamente desde el nombre (ej: "juanperez123abc")
-- **Seguridad**: Contraseñas hasheadas, validación de emails duplicados
-
-#### Autenticación (`loginService`)
-- **JWT tokens**: Generación de tokens seguros con expiración
-- **Validación robusta**: Verificación de credenciales con errores genéricos
-- **Sesiones seguras**: Retorna usuario sin contraseña + token de acceso
-
-### Flujo Funcional
-1. **Registro**: Usuario proporciona datos → Sistema genera username único → Crea disponibilidad predeterminada
-2. **Login**: Usuario ingresa credenciales → Validación → Generación token JWT → Sesión activa
-
-### Características Destacadas
-- **UX sin fricción**: Usuario obtiene configuración útil inmediatamente
-- **Seguridad empresarial**: Manejo profesional de tokens y contraseñas
-- **Escalabilidad**: Username generation con 17.5M combinaciones posibles
-
----
-
-## ⏰ Servicio de Disponibilidad (✅ CON SOPORTE TIMEZONE)
-
-### Descripción
-Gestiona horarios de disponibilidad de usuarios y genera slots de tiempo disponibles para eventos públicos, considerando reuniones existentes, **✅ con soporte para diferentes zonas horarias y fechas específicas**.
-
-### Funcionalidades Principales
-
-#### Gestión Personal
-- **Consulta disponibilidad** (`getUserAvailabilityService`): 
-  - Obtiene configuración actual del usuario
-  - **✅ Convierte UTC a zona horaria solicitada para visualización**
-  
-- **Actualización horarios** (`updateAvailabilityService`): 
-  - Modifica días y horarios disponibles
-  - **✅ Convierte input de usuario a UTC para almacenamiento**
-
-#### Disponibilidad Pública
-- **Slots para eventos** (`getAvailabilityForPublicEventService`): Genera horarios reservables considerando:
-  - Horarios de disponibilidad configurados
-  - Reuniones ya programadas en Google Calendar
-  - Duración del evento
-  - Intervalos entre citas (timeGap)
-  - **✅ Zona horaria del usuario (visualización ajustada)**
-  - **✅ Fecha específica solicitada (filtrado inteligente)**
-
-### ✅ Mejoras Implementadas
-
-#### Almacenamiento Normalizado
-- **Formato UTC en base de datos**: Todos los horarios ahora se almacenan en UTC
-- **Consistencia de datos**: Comparaciones precisas entre reuniones y disponibilidad
-- **Independencia de zona**: Sistema funcional para usuarios globales
-
-#### Visualización Adaptativa
-- **Parámetro timezone**: Endpoints aceptan zona horaria del usuario
-- **Conversión automática**: Slots mostrados en el horario local del usuario
-- **Validación de formato**: Verificación de zonas horarias IANA válidas
-
-#### Filtrado por Fecha
-- **Parámetro date**: Permite solicitar disponibilidad para un día específico
-- **Optimización de consultas**: Solo procesa el día solicitado
-- **Formato estandarizado**: Usa YYYY-MM-DD para fechas
-
-### Algoritmos Inteligentes
-
-#### Generación de Slots
-1. Para cada día de la semana calcula la próxima fecha
-2. Divide horario disponible en intervalos según duración del evento
-3. Consulta reuniones existentes en Google Calendar
-4. Excluye slots con conflictos de reuniones existentes
-5. Filtra horarios en el pasado (no permite reservar atrás en el tiempo)
-
-#### Prevención de Conflictos
-- **Validación de Google Calendar**: Detecta conflictos en tiempo real
-- **Tiempo real**: No muestra slots ya pasados si es el día actual
-- **Flexibilidad**: Configurable por usuario (horarios, días, intervalos)
-
----
-
-## 📅 Servicio de Gestión de Eventos (✅ CON SOPORTE BÁSICO DE CALENDARIOS)
-
-### Descripción
-Maneja el ciclo completo de eventos/servicios reservables con sistema de URLs públicas, control de privacidad y **✅ asignación básica de calendarios específicos**.
-
-### Funcionalidades Principales
-
-#### Gestión de Eventos con Calendarios
-- **Creación con calendario** (`createEventService`): 
-  - ✅ Crea eventos con slug automático y validación
-  - **✅ Acepta calendar_id y calendar_name específicos**
-  - **✅ Usa calendario 'primary' por defecto si no se especifica**
-- **Privacidad** (`toggleEventPrivacyService`): Cambia visibilidad público/privado
-- **Consulta personal** (`getUserEventsService`): Lista eventos ✅ con información de calendario
-- **Eliminación inteligente** (`deleteEventService`): Borra eventos ✅ y cancela reuniones automáticamente
-
-#### Acceso Público
-- **Descubrimiento** (`getPublicEventsByUsernameService`): Lista eventos públicos
-- **Detalle** (`getPublicEventByUsernameAndSlugService`): Evento específico para reservar
-
-### ✅ Casos de Uso Actuales
-
-#### Configuración Médico Básica
-```
-Dr. García puede:
-1. Crear evento "Consulta General" → Calendario "consultorio@gmail.com"
-2. Crear evento "Teleconsulta" → Calendario principal 
-3. Pacientes reservan → Van al calendario correcto automáticamente
-
-BENEFICIO ACTUAL:
-✅ Eventos organizados por calendario específico
-✅ Reuniones van al calendario configurado
-✅ No se mezclan con calendario personal
-```
-
-#### Configuración Consultor Básica
-```
-María Consultora puede:
-1. Crear evento "Asesoría Empresarial" → Calendario "trabajo@gmail.com"
-2. Crear evento "Mentoría Personal" → Calendario principal
-3. Clientes reservan → Cada tipo va a su calendario
-
-BENEFICIOS ACTUALES:
-✅ Separación básica trabajo/personal
-✅ Reuniones organizadas por tipo
-✅ Enlaces Meet desde calendario correcto
-```
-
-### Arquitectura de URLs Públicas
-
-#### Sistema SEO-Friendly
-```
-PATRÓN: /[username]/[event-slug]
-EJEMPLO: /dr.garcia123/consulta-general
-
-BENEFICIOS:
-✅ URLs memorables y legibles
-✅ Optimización para motores de búsqueda  
-✅ Identificación única global de eventos
-✅ Estructura escalable
-```
-
-### Integración con Calendarios
-
-#### Flujo de Creación de Evento
-```
-1. Usuario especifica calendar_id al crear evento
-2. Evento guardado con referencia al calendario
-3. Futuras reservas van automáticamente al calendario correcto
-4. Enlaces Meet generados desde calendario específico
-```
-
-#### Validación y Seguridad
-- **Validación de propiedad**: Solo el dueño puede modificar/eliminar eventos
-- **Datos filtrados**: Consultas públicas excluyen información sensible
-- **✅ Fallback inteligente**: Usa 'primary' si calendar_id no válido
-
----
-
-## 🔗 Servicio de Integraciones (✅ SCOPE AMPLIADO)
-
-### Descripción
-Gestiona conexiones OAuth con servicios externos con **✅ scope ampliado** para soporte de calendarios específicos.
-
-### Funcionalidades Principales
-
-#### Gestión de Conexiones
-- **Estado completo** (`getUserIntegrationsService`): Lista integraciones activas
-- **Verificación rápida** (`checkIntegrationService`): Confirma si integración está activa
-- **Conexión OAuth ampliada** (`connectAppService`): 
-  - ✅ Inicia proceso de autorización con proveedores
-  - **✅ Incluye scope para calendarios específicos**
-  - **✅ Solicita permisos para calendar + calendar.events**
-- **Persistencia** (`createIntegrationService`): Guarda tokens tras autorización exitosa
-
-#### Gestión de Tokens
-- **Validación automática** (`validateGoogleToken`): Renueva tokens de Google automáticamente
-- **✅ Scope management**: Gestiona permisos para eventos y calendarios
-- **Seguridad OAuth**: Estado codificado, scopes mínimos, almacenamiento seguro
-
-### Integraciones Soportadas
-
-#### Google Meet & Calendar (✅ Funcionando)
-- **Funcionalidad básica**: Crea eventos en Google Calendar + enlaces Meet automáticos
-- **✅ Calendarios específicos**: Puede crear eventos en calendarios dedicados
-- **Scopes actuales**: 
-  - `calendar` (acceso completo a calendarios)
-  - `calendar.events` (lectura/escritura de eventos)
-- **Renovación**: Tokens se renuevan automáticamente sin intervención del usuario
-
-#### Zoom Meeting (Preparado)
-- **Estado**: Estructura configurada, implementación OAuth pendiente
-- **Funcionalidad planeada**: Rooms y calendarios Zoom
-
-#### Outlook Calendar (Preparado)  
-- **Estado**: Configuración lista, integración OAuth pendiente
-- **Funcionalidad planeada**: Carpetas/calendarios Outlook
-
-### Flujo OAuth Actual
-```
-1. Usuario selecciona "Conectar Google Calendar"
-2. Sistema genera URL OAuth con scopes ampliados
-3. Usuario autoriza permisos de calendarios + eventos
-4. Google retorna código + estado
-5. Sistema intercambia código por tokens
-6. Tokens guardados en BD de forma segura
-7. ✅ Usuario puede especificar calendar_id en eventos
-```
-
----
-
-## 🤝 Servicio de Reuniones (✅ CALENDARIO CORRECTO)
-
-### Descripción
-Gestiona el ciclo completo de reuniones entre organizadores e invitados con **✅ creación en calendario específico** y cancelación inteligente.
-
-### Funcionalidades Principales
-
-#### Creación de Reuniones
-- **Reserva pública** (`createMeetBookingForGuestService`):
-  - ✅ Obtiene calendar_id desde el evento
-  - ✅ Crea reunión en calendario específico (no 'primary')
-  - ✅ Genera enlace Google Meet automáticamente
-  - ✅ Guarda referencia de calendario para cancelaciones
-
-#### Gestión de Reuniones
-- **Consulta de usuario** (`getUserMeetingsService`): Lista con filtros (próximas, pasadas, canceladas)
-- **Cancelación inteligente** (`cancelMeetingService`):
-  - ✅ Cancela del calendario específico donde se creó
-  - ✅ Busca integración del usuario correcto
-  - ✅ Elimina evento de Google Calendar
-  - ✅ Actualiza estado en base de datos
-
-### ✅ Flujos Actuales
-
-#### Flujo de Reserva Mejorado
-```
-Cliente visita → /usuario123abc/consulta-medica
-    ↓
-Sistema consulta evento → Obtiene calendar_id: "consultorio@gmail.com"
-    ↓
-Consulta disponibilidad → Considera reuniones existentes
-    ↓
-Muestra slots libres → Excluye conflictos
-    ↓
-Cliente selecciona horario → Reserva confirmada
-    ↓
-✅ Reunión creada en calendario específico
-    ↓
-Meeting.calendarEventId guardado → Para cancelaciones futuras
-    ↓
-Invitación enviada desde calendario correcto
-```
-
-#### Flujo de Cancelación Inteligente
-```
-Usuario cancela reunión → Sistema busca meeting
-    ↓
-Identifica calendar_id → Del evento original
-    ↓
-✅ Cancela del calendario específico
-    ↓
-Elimina de Google Calendar → No afecta otros calendarios
-    ↓
-Actualiza estado en BD → CANCELLED
-```
-
----
-
-## 🔄 Integración Entre Servicios (Estado Actual)
-
-### Dependencias Entre Servicios
-
-#### Servicio de Eventos → Integraciones
-- Los eventos almacenan `calendar_id` específico del calendario deseado
-- ✅ Fallback a 'primary' si calendar_id no especificado
-- Validación de que la integración Google está activa
-
-#### Servicio de Reuniones → Eventos
-- Al crear reunión, obtiene `calendar_id` desde el evento
-- ✅ Crea reunión en calendario específico, no en 'primary'
-- Guarda referencia para cancelaciones futuras
-
-#### Integraciones → Google Calendar API
-- OAuth con scopes ampliados para acceso a calendarios específicos
-- ✅ Tokens válidos para crear eventos en cualquier calendario del usuario
-- Renovación automática mantiene acceso
-
-#### Disponibilidad → Google Calendar
-- Al generar slots, consulta reuniones existentes
-- ✅ Considera todas las reuniones del usuario
-- Evita conflictos automáticamente
-
-### ✅ Flujos de Funcionamiento Actual
-
-#### Flujo Completo de Usuario
-```
-1. Registro → Username automático + Disponibilidad L-V 9AM-5PM
-2. Login → JWT token generado
-3. Conectar Google Calendar → OAuth con scopes ampliados
-4. Crear evento "Consultoría" → calendar_id: "trabajo@gmail.com"
-5. Hacer evento público → URL: /usuario123abc/consultoria
-6. Cliente reserva → Reunión va a "trabajo@gmail.com"
-7. Cancelación → Desde calendario correcto
-```
-
-#### Flujo de Reserva Real
-```
-1. Cliente visita URL pública
-2. Sistema consulta evento y obtiene calendar_id
-3. Consulta disponibilidad considerando reuniones existentes
-4. Cliente reserva slot
-5. ✅ Reunión creada en calendario específico del evento
-6. Invitación enviada desde calendario correcto
-```
-
----
-
-## 📊 Métricas y Monitoreo (Estado Actual)
-
-### Métricas por Servicio
-
-#### Autenticación
-- Registros exitosos vs fallidos
-- Intentos de login y tasas de éxito
-- Generación de usernames únicos
-
-#### Disponibilidad
-- Slots generados por evento
-- Conflictos detectados con reuniones existentes
-- Modificaciones de horarios por usuario
-
-#### Eventos (✅ Con información de calendario)
-- Eventos creados públicos vs privados ✅ por calendar_id
-- Cambios de privacidad
-- Accesos a URLs públicas
-- ✅ Uso de calendarios específicos vs 'primary'
-
-#### Integraciones (✅ Scope ampliado)
-- Conexiones OAuth exitosas ✅ con scope ampliado
-- Renovaciones de tokens automáticas
-- Errores de integración por proveedor
-
-#### Reuniones (✅ Calendario correcto)
-- Reuniones creadas ✅ por calendar_id específico
-- Cancelaciones ✅ del calendario correcto
-- Errores de creación por tipo de calendario
-- Performance de creación por calendario
-
----
-
-## 🛣️ Roadmap y Próximas Funcionalidades
-
-### ✅ Completado en v2.0-beta
-- OAuth con scopes ampliados
-- Eventos en calendarios específicos (no más 'primary' hardcodeado)
-- Reuniones en calendario correcto
-- Cancelación inteligente del calendario específico
-- Eliminación en cascada (Event Types → Meetings → Google Calendar)
-
-### 🚧 En Desarrollo (v2.0-full)
-- **Cache automático de calendarios**: Sincronización automática desde Google Calendar API
-- **Endpoints /api/calendars**: CRUD completo para gestión de calendarios
-- **Reasignación de calendario**: Cambiar calendario de eventos existentes
-- **Sincronización bidireccional**: Cambios en Google reflejados automáticamente
-
-### 📋 Funcionalidades Futuras (v2.1+)
-- **Dashboard multi-calendario**: Vista unificada de todos los calendarios
-- **Analytics por calendario**: Métricas específicas por calendario
-- **Políticas por calendario**: Diferentes reglas de cancelación/modificación
-- **Templates de calendario**: Configuraciones predefinidas por industria
-
-### Integraciones Adicionales Planeadas
-- **Microsoft Teams**: Video conferencing con calendario Exchange
-- **Apple Calendar**: Sincronización móvil nativa
-- **Stripe**: Pagos para eventos premium con facturación por calendario
-- **Webhooks**: Notificaciones en tiempo real de cambios
-
----
-
-## 🔧 Configuración y Deployment
-
-### Variables de Entorno Requeridas
-```env
-# Base
-DATABASE_URL=postgresql://...
-JWT_SECRET=your-jwt-secret
-
-# Google OAuth (✅ SCOPE AMPLIADO)
-GOOGLE_CLIENT_ID=your-google-client-id  
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-REDIRECT_URI=https://yourdomain.com/oauth/callback
-```
-
-### Dependencias Principales
-- **TypeORM**: ORM para base de datos con entidades actualizadas
-- **Google APIs**: OAuth y Calendar integration ✅ con scope ampliado
-- **JWT**: Manejo de tokens de autenticación
-- **date-fns**: Manipulación de fechas y horarios
-
----
-
-## 📞 Soporte y Contacto
-
-### Para problemas con calendarios específicos:
-
-1. **Eventos van a calendario incorrecto**:
-   - Verificar calendar_id en evento
-   - Confirmar scope OAuth ampliado
-   - Revisar logs de creación
-
-2. **Reuniones no aparecen en Google Calendar**:
-   - Verificar tokens de Google válidos
-   - Confirmar permisos de calendario
-   - Revisar calendar_id del evento
-
-3. **Errores de cancelación**:
-   - Verificar que meeting tiene calendarEventId
-   - Confirmar integración Google activa
-   - Revisar permisos de calendario
-
-### Soporte General
-
-Para preguntas técnicas, reportes de bugs o solicitudes de nuevas funcionalidades:
-
-1. **Revisa la documentación**: Busca en este README primero
-2. **Consulta logs**: Los servicios incluyen logging detallado ✅ incluyendo calendar_id
-3. **Reporta issues**: Incluye pasos para reproducir y logs relevantes
-4. **Solicita features**: Describe el caso de uso y beneficio esperado
-
-### Testing con Postman
-
-- **Requests actualizados**: Con soporte para calendar_id en eventos
-- **Scripts automáticos**: Captura variables automáticamente
-- **Debugging**: Logs específicos de operaciones de calendario
-
----
-
-**✅ Versión 2.0-beta**: Soporte básico para calendarios específicos  
-**Última actualización**: Junio 2025  
-**Estado actual**: Funcionalidad core completada, extensiones en desarrollo  
-**Próximo milestone**: Cache automático y endpoints completos de calendarios
+*Última actualización: Junio 2025*
