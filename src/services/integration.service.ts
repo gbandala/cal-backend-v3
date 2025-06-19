@@ -32,7 +32,7 @@ const appTypeToProviderMap: Record<
     IntegrationProviderEnum.GOOGLE,
   [IntegrationAppTypeEnum.ZOOM_MEETING]: IntegrationProviderEnum.ZOOM,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationProviderEnum.MICROSOFT,
-  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
+  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
 };
 
 /**
@@ -50,7 +50,7 @@ const appTypeToCategoryMap: Record<
   [IntegrationAppTypeEnum.ZOOM_MEETING]:
     IntegrationCategoryEnum.VIDEO_CONFERENCING,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationCategoryEnum.CALENDAR,
-  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
+  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
 };
 
 /**
@@ -63,7 +63,7 @@ const appTypeToTitleMap: Record<IntegrationAppTypeEnum, string> = {
   [IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR]: "Google Meet & Calendar",
   [IntegrationAppTypeEnum.ZOOM_MEETING]: "Zoom",
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: "Outlook Calendar",
-  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
+  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
 };
 
 /**
@@ -196,14 +196,44 @@ export const connectAppService = async (
       console.log("Zoom OAuth URL:", authUrl);
       break;
 
-    case IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM: // ← NUEVO
+    case IntegrationAppTypeEnum.OUTLOOK_CALENDAR:
+      const microsoftScope = process.env.MICROSOFT_SCOPE ||
+        'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.ReadWrite';
+
+      // Verificar variables de entorno requeridas
+      if (!process.env.MICROSOFT_CLIENT_ID ||
+        !process.env.MICROSOFT_REDIRECT_URI) {
+        throw new BadRequestException("Microsoft OAuth configuration missing");
+      }
+
       authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
-        `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
+        `client_id=${encodeURIComponent(process.env.MICROSOFT_CLIENT_ID)}&` +
         `response_type=code&` +
-        `redirect_uri=${encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI!)}&` +
-        `scope=${encodeURIComponent(process.env.MICROSOFT_SCOPE!)}&` +
-        `state=${encodeURIComponent(state)}`;
+        `redirect_uri=${encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI)}&` +
+        `scope=${encodeURIComponent(microsoftScope)}&` +
+        `response_mode=query&` +
+        `state=${encodeURIComponent(state)}&` +
+        `prompt=consent&` + // Fuerza pantalla de consentimiento para refresh token
+        `access_type=offline`; // Garantiza refresh token
+
+      console.log("✅ Microsoft OAuth URL generated:", {
+        clientId: process.env.MICROSOFT_CLIENT_ID,
+        redirectUri: process.env.MICROSOFT_REDIRECT_URI,
+        scope: microsoftScope,
+        authUrlLength: authUrl.length,
+        fullUrl: authUrl
+      });
       break;
+    // case IntegrationAppTypeEnum.OUTLOOK_CALENDAR: // ← NUEVO
+
+    //   authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
+    //     `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
+    //     `response_type=code&` +
+    //     `redirect_uri=${encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI!)}&` +
+    //     `scope=${encodeURIComponent(process.env.MICROSOFT_SCOPE!)}&` +
+    //     `state=${encodeURIComponent(state)}`;
+    //   console.log("Outlook OAuth URL:", authUrl);
+    //   break;
     default:
       // Error para tipos no implementados
       throw new BadRequestException("Unsupported app type");

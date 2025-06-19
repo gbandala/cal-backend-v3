@@ -7,7 +7,7 @@ import { config } from "./config/app.config";
 import { HTTPSTATUS } from "./config/http.config";
 import { errorHandler } from "./middlewares/errorHandler.middleware";
 import { asyncHandler } from "./middlewares/asyncHandler.middeware";
-import { BadRequestException } from "./utils/app-error";
+// import { BadRequestException } from "./utils/app-error";
 import { initializeDatabase } from "./database/database";
 import authRoutes from "./routes/auth.route";
 import passport from "passport";
@@ -44,7 +44,7 @@ app.use(`${BASE_PATH}/event`, eventRoutes);
 app.use(`${BASE_PATH}/availability`, availabilityRoutes);
 app.use(`${BASE_PATH}/integration`, integrationRoutes);
 app.use(`${BASE_PATH}/meeting`, meetingRoutes);
-app.use(`${BASE_PATH}/calendars`, calendarRoutes); // ← AGREGAR ESTA LÍNEA
+app.use(`${BASE_PATH}/calendars`, calendarRoutes); 
 app.use(errorHandler);
 
 app.listen(config.PORT, async () => {

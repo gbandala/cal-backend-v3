@@ -393,7 +393,7 @@ export const createMeetBookingForGuestService = async (
     // Asignar datos para guardar en BD
     meetLink = meetingData.join_url;
     calendarEventId = outlookEvent.id; // ID del evento de Outlook
-    calendarAppType = IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM;
+    calendarAppType = IntegrationAppTypeEnum.OUTLOOK_CALENDAR;
 
     zoomMeetingId = meetingData.id;
     zoomJoinUrl = meetingData.join_url;
