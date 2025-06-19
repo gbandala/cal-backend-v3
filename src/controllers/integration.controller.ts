@@ -275,17 +275,17 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
 
     await testTokenPermissions(tokens.access_token);
     // Obtener información del usuario
-    // const userInfo = await getMicrosoftUserInfo(tokens.access_token);
-    // console.log('paso 4:Microsoft user info:', userInfo);
+    const userInfo = await getMicrosoftUserInfo(tokens.access_token);
+    console.log('paso 4:Microsoft user info:', userInfo);
 
     // // Obtener calendarios disponibles
-    // const calendars = await getOutlookCalendars(tokens.access_token);
-    // const defaultCalendar = calendars.find(cal => cal.isDefaultCalendar) || calendars[0];
+    const calendars = await getOutlookCalendars(tokens.access_token);
+    const defaultCalendar = calendars.find(cal => cal.isDefaultCalendar) || calendars[0];
 
-    // console.log('paso 5:Available Outlook calendars:', {
-    //   total: calendars.length,
-    //   defaultCalendar: defaultCalendar?.name
-    // });
+    console.log('paso 5:Available Outlook calendars:', {
+      total: calendars.length,
+      defaultCalendar: defaultCalendar?.name
+    });
 
     // Calcular fecha de expiración
     const expiryDate = Date.now() + (tokens.expires_in * 1000);
@@ -309,30 +309,30 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
     }
 
     // Crear integración en base de datos
-    // const integration = await createIntegrationService({
-    //   userId,
-    //   provider,
-    //   category,
-    //   app_type: appType,
-    //   access_token: tokens.access_token,
-    //   refresh_token: tokens.refresh_token,
-    //   expiry_date: expiryDate,
-    //   metadata: {
-    //     scope: tokens.scope,
-    //     token_type: tokens.token_type,
-    //     userInfo: userInfo
-    //   },
-    //   // Campos específicos de Outlook
-    //   outlook_calendar_id: defaultCalendar?.id,
-    //   outlook_calendar_name: defaultCalendar?.name
-    // });
+    const integration = await createIntegrationService({
+      userId,
+      provider,
+      category,
+      app_type: appType,
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expiry_date: expiryDate,
+      metadata: {
+        scope: tokens.scope,
+        token_type: tokens.token_type,
+        userInfo: userInfo
+      },
+      // Campos específicos de Outlook
+      outlook_calendar_id: defaultCalendar?.id,
+      outlook_calendar_name: defaultCalendar?.name
+    });
 
-    // console.log('paso 6:Microsoft integration created successfully:', {
-    //   id: integration.id,
-    //   appType: integration.app_type,
-    //   calendarId: integration.outlook_calendar_id,
-    //   calendarName: integration.outlook_calendar_name
-    // });
+    console.log('paso 6:Microsoft integration created successfully:', {
+      id: integration.id,
+      appType: integration.app_type,
+      calendarId: integration.outlook_calendar_id,
+      calendarName: integration.outlook_calendar_name
+    });
 
     // Redireccionar al frontend con éxito
     res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?success=microsoft_connected&app_type=${appType}`);
