@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.middeware";
 import { HTTPSTATUS } from "../config/http.config";
 import {
+  
   checkIntegrationService,
   connectAppService,
   createIntegrationService,
@@ -13,12 +14,16 @@ import { config } from "../config/app.config";
 import { decodeState } from "../utils/helper";
 import { googleOAuth2Client } from "../config/oauth.config";
 import {
+  Integration,
   IntegrationAppTypeEnum,
   IntegrationCategoryEnum,
   IntegrationProviderEnum,
 } from "../database/entities/integration.entity";
 import { zoomOAuth2Client } from "../config/oauth.config";
 import { getMicrosoftUserInfo, getOutlookCalendars } from "../services/outlook.service";
+import { syncOutlookCalendarsService, createDefaultCalendarForUser } from "../services/user-calendars.service";
+import { UserCalendar } from "../database/entities/user-calendar.entity"; 
+import { AppDataSource } from "../config/database.config";
 
 const CLIENT_APP_URL = config.FRONTEND_INTEGRATION_URL;
 
@@ -196,22 +201,26 @@ export const zoomOAuthCallbackController = asyncHandler(
   }
 );
 
+
+
 /**
- * Callback OAuth de Microsoft - maneja la respuesta de autorización
+ * Microsoft Callback - VERSIÓN COMPLETA CON USER CALENDARS
+ * Replica el comportamiento de Google Calendar + Zoom
  */
 export const microsoftCallbackController = async (req: Request, res: Response) => {
   try {
     const { code, state, error } = req.query;
-    console.log('-------------------------------------------------------')
+    console.log('-------------------------------------------------------');
+    console.log('🔵 Microsoft OAuth Callback Started');
 
     // Manejar errores de OAuth
     if (error) {
-      console.error('Microsoft OAuth error:', error);
+      console.error('❌ Microsoft OAuth error:', error);
       return res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?error=authorization_denied`);
     }
 
     if (!code || !state) {
-      console.error('Missing code or state in Microsoft callback');
+      console.error('❌ Missing code or state in Microsoft callback');
       return res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?error=missing_parameters`);
     }
 
@@ -219,23 +228,15 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
     const decodedState = decodeState(state as string);
     const { userId, appType } = decodedState;
 
-    console.log('paso 1: Microsoft OAuth callback:', {
+    console.log('📋 OAuth data decoded:', {
       userId,
       appType,
-      cCode: code
+      codeLength: (code as string).length
     });
 
-    const request = new URLSearchParams({
-      client_id: process.env.MICROSOFT_CLIENT_ID!,
-      client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-      code: code as string,
-      grant_type: 'authorization_code',
-      redirect_uri: process.env.MICROSOFT_REDIRECT_URI!,
-      scope: process.env.MICROSOFT_SCOPE!
-    });
-
-    console.log('paso 2: Request body for token exchange:', request.toString());
-    // Intercambiar código por tokens
+    // 1. INTERCAMBIAR CÓDIGO POR TOKENS
+    console.log('🔄 Step 1: Exchanging code for tokens...');
+    
     const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
       method: 'POST',
       headers: {
@@ -251,68 +252,95 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
       })
     });
 
-    // console.log('paso 2:Token response:', tokenResponse);
-
     if (!tokenResponse.ok) {
       const error = await tokenResponse.json();
-      console.error('Failed to exchange code for tokens:', error);
+      console.error('❌ Token exchange failed:', error);
       return res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?error=token_exchange_failed`);
     }
 
     const tokens = await tokenResponse.json();
-    console.log('paso 3: Microsoft tokens received:', {
-      AccessToken: tokens.access_token,
-      RefreshToken: tokens.refresh_token,
-      expiresIn: tokens.expires_in
-    });
-
-    console.log('🔍 Token Details:', {
-      scope: tokens.scope, // ← ESTO es clave
+    console.log('✅ Step 1 Complete - Tokens received:', {
+      hasAccessToken: !!tokens.access_token,
       hasRefreshToken: !!tokens.refresh_token,
-      tokenType: tokens.token_type,
+      scope: tokens.scope,
       expiresIn: tokens.expires_in
     });
 
-    await testTokenPermissions(tokens.access_token);
-    // Obtener información del usuario
+    // 2. OBTENER INFORMACIÓN DEL USUARIO
+    console.log('🔄 Step 2: Getting user info...');
+    
     const userInfo = await getMicrosoftUserInfo(tokens.access_token);
-    console.log('paso 4:Microsoft user info:', userInfo);
-
-    // // Obtener calendarios disponibles
-    const calendars = await getOutlookCalendars(tokens.access_token);
-    const defaultCalendar = calendars.find(cal => cal.isDefaultCalendar) || calendars[0];
-
-    console.log('paso 5:Available Outlook calendars:', {
-      total: calendars.length,
-      defaultCalendar: defaultCalendar?.name
+    console.log('✅ Step 2 Complete - User info received:', {
+      email: userInfo.email,
+      name: userInfo.displayName,
+      accountType: userInfo.email?.includes('outlook.com') ? 'personal' : 'business'
     });
 
-    // Calcular fecha de expiración
-    const expiryDate = Date.now() + (tokens.expires_in * 1000);
+    // 3. SINCRONIZAR CALENDARIOS EN USER_CALENDARS (NUEVO!)
+    console.log('🔄 Step 3: Syncing calendars to user_calendars...');
+    
+    let userCalendarsResult = {
+      success: false,
+      calendars: [] as any[],
+      method: 'none' as string,
+      error: null as string | null
+    };
 
-    // Determinar provider y category según el appType
-    let provider: IntegrationProviderEnum;
-    let category: IntegrationCategoryEnum;
-
-    switch (appType) {
-      case IntegrationAppTypeEnum.OUTLOOK_CALENDAR:
-        provider = IntegrationProviderEnum.MICROSOFT;
-        category = IntegrationCategoryEnum.CALENDAR;
-        break;
-      // case IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM:
-      //   provider = IntegrationProviderEnum.MICROSOFT;
-      //   category = IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING;
-      //   break;
-      default:
-        console.error('Unsupported app type for Microsoft:', appType);
-        return res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?error=unsupported_app_type`);
+    try {
+      const syncedCalendars = await syncOutlookCalendarsService(userId, tokens.access_token);
+      userCalendarsResult = {
+        success: true,
+        calendars: syncedCalendars,
+        method: 'sync',
+        error: null
+      };
+      console.log('✅ Step 3 Complete - Calendars synced successfully:', {
+        calendarsCount: syncedCalendars.length,
+        primaryCalendar: syncedCalendars.find(cal => cal.isPrimary)?.calendarName
+      });
+    } catch (syncError) {
+      const errorMessage = syncError instanceof Error ? syncError.message : String(syncError);
+      console.warn('⚠️ Step 3 Partial - Calendar sync failed, will create fallback:', errorMessage);
+      userCalendarsResult.error = errorMessage;
     }
 
-    // Crear integración en base de datos
+    // 4. OBTENER CALENDARIOS PARA INTEGRATIONS (Como antes)
+    console.log('🔄 Step 4: Getting calendars for integrations table...');
+    
+    let defaultCalendar: any = null;
+    let calendarsForIntegration: any[] = [];
+
+    try {
+      calendarsForIntegration = await getOutlookCalendars(tokens.access_token);
+      defaultCalendar = calendarsForIntegration.find(cal => cal.isDefaultCalendar) || calendarsForIntegration[0];
+      
+      console.log('✅ Step 4 Complete - Calendar access for integrations:', {
+        calendarsFound: calendarsForIntegration.length,
+        defaultCalendar: defaultCalendar?.name
+      });
+    } catch (calendarError) {
+      console.warn(
+        '⚠️ Step 4 Fallback - Calendar access limited, using fallback:',
+        calendarError instanceof Error ? calendarError.message : String(calendarError)
+      );
+      
+      // Fallback para cuentas personales
+      defaultCalendar = {
+        id: 'primary',
+        name: 'My Calendar',
+        isDefaultCalendar: true
+      };
+    }
+
+    // 5. CREAR INTEGRACIÓN EN BASE DE DATOS
+    console.log('🔄 Step 5: Creating integration record...');
+    
+    const expiryDate = Date.now() + (tokens.expires_in * 1000);
+
     const integration = await createIntegrationService({
       userId,
-      provider,
-      category,
+      provider: IntegrationProviderEnum.MICROSOFT,
+      category: IntegrationCategoryEnum.CALENDAR,
       app_type: appType,
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -320,151 +348,137 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
       metadata: {
         scope: tokens.scope,
         token_type: tokens.token_type,
-        userInfo: userInfo
+        userInfo: userInfo,
+        accountType: userInfo.email?.includes('outlook.com') ? 'personal' : 'business',
+        calendarSyncResult: userCalendarsResult
       },
-      // Campos específicos de Outlook
       outlook_calendar_id: defaultCalendar?.id,
       outlook_calendar_name: defaultCalendar?.name
     });
 
-    console.log('paso 6:Microsoft integration created successfully:', {
-      id: integration.id,
-      appType: integration.app_type,
+    console.log('✅ Step 5 Complete - Integration created:', {
+      integrationId: integration.id,
       calendarId: integration.outlook_calendar_id,
       calendarName: integration.outlook_calendar_name
     });
+
+    // 6. CREAR CALENDARIO POR DEFECTO SI NO SE SINCRONIZÓ NINGUNO
+    if (!userCalendarsResult.success && defaultCalendar) {
+      console.log('🔄 Step 6: Creating fallback calendar in user_calendars...');
+      
+      try {
+        const fallbackCalendar = await createDefaultCalendarForUser(
+          userId,
+          defaultCalendar.id,
+          defaultCalendar.name
+        );
+
+        userCalendarsResult = {
+          success: true,
+          calendars: [fallbackCalendar],
+          method: 'fallback',
+          error: null
+        };
+
+        console.log('✅ Step 6 Complete - Fallback calendar created:', {
+          calendarId: fallbackCalendar.calendarId,
+          calendarName: fallbackCalendar.calendarName
+        });
+      } catch (fallbackError) {
+        console.error('❌ Step 6 Failed - Could not create fallback calendar:', fallbackError);
+        // No interrumpir el flujo - la integración principal ya está guardada
+      }
+    } else {
+      console.log('⏭️ Step 6 Skipped - Calendars already synced successfully');
+    }
+
+    // 7. RESUMEN FINAL Y REDIRECCIÓN
+    console.log('🎉 Microsoft OAuth Integration Complete!');
+    console.log('📊 Final Summary:', {
+      integrationId: integration.id,
+      userCalendarsMethod: userCalendarsResult.method,
+      userCalendarsCount: userCalendarsResult.calendars.length,
+      userCalendarsSuccess: userCalendarsResult.success,
+      accountType: userInfo.email?.includes('outlook.com') ? 'personal' : 'business'
+    });
+    console.log('-------------------------------------------------------');
 
     // Redireccionar al frontend con éxito
     res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?success=microsoft_connected&app_type=${appType}`);
 
   } catch (error) {
-    console.error('Microsoft OAuth callback error:', error);
+    console.error('💥 Microsoft OAuth callback error:', error);
     res.redirect(`${process.env.FRONTEND_INTEGRATION_URL}?error=connection_failed`);
   }
 };
 
-const testTokenPermissions = async (accessToken: string) => {
-  console.log('🧪 Testing token permissions...');
-  
-  // Test 1: User Info (ya funciona)
-  try {
-    const userResponse = await fetch('https://graph.microsoft.com/v1.0/me', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
+/**
+ * Desconecta una integración específica del usuario
+ * DELETE /api/integration/disconnect/:appType
+ */
+export const disconnectIntegrationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?.id as string;
+    const { appType } = req.params;
+
+    console.log('🔌 Disconnecting integration:', {
+      userId,
+      appType
     });
-    console.log('✅ User Info:', userResponse.status);
-    
-    if (userResponse.ok) {
-      const userData = await userResponse.json();
-      console.log('👤 User Details:', {
-        userType: userData.userType,
-        accountEnabled: userData.accountEnabled,
-        mail: userData.mail,
-        userPrincipalName: userData.userPrincipalName
+
+    try {
+      const integrationRepository = AppDataSource.getRepository(Integration);
+      const userCalendarRepository = AppDataSource.getRepository(UserCalendar);
+
+      // 1. Buscar integración existente
+      const integration = await integrationRepository.findOne({
+        where: {
+          userId: userId,
+          app_type: appType as IntegrationAppTypeEnum
+        }
+      });
+
+      if (!integration) {
+        return res.status(HTTPSTATUS.NOT_FOUND).json({
+          message: "Integration not found",
+          success: false
+        });
+      }
+
+      // 2. Eliminar calendarios relacionados (para Outlook)
+      if (appType === IntegrationAppTypeEnum.OUTLOOK_CALENDAR) {
+        const deletedCalendars = await userCalendarRepository.delete({
+          userId: userId
+        });
+        
+        console.log('🗑️ Deleted user calendars:', deletedCalendars.affected);
+      }
+
+      // 3. Eliminar integración
+      await integrationRepository.remove(integration);
+
+      console.log('✅ Integration disconnected successfully:', {
+        integrationId: integration.id,
+        appType: integration.app_type
+      });
+
+      return res.status(HTTPSTATUS.OK).json({
+        message: "Integration disconnected successfully",
+        disconnectedIntegration: {
+          id: integration.id,
+          appType: integration.app_type,
+          provider: integration.provider
+        },
+        success: true
+      });
+
+    } catch (error) {
+      console.error('❌ Error disconnecting integration:', error);
+      return res.status(HTTPSTATUS.INTERNAL_SERVER_ERROR).json({
+        message: "Failed to disconnect integration",
+        error: error instanceof Error ? error.message : String(error),
+        success: false
       });
     }
-  } catch (error) {
-    console.log('❌ User Info failed:', error);
   }
-
-  // Test 2: Calendars (el que falla) - Con más detalles
-  try {
-    console.log('📅 Testing calendars endpoint...');
-    const calendarsResponse = await fetch('https://graph.microsoft.com/v1.0/me/calendars', {
-      headers: { 
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-        'ConsistencyLevel': 'eventual'
-      }
-    });
-    
-    console.log('📅 Calendars API Response:', {
-      status: calendarsResponse.status,
-      statusText: calendarsResponse.statusText,
-      headers: Object.fromEntries(calendarsResponse.headers.entries())
-    });
-
-    if (!calendarsResponse.ok) {
-      const errorText = await calendarsResponse.text();
-      console.log('❌ Raw Calendars Error:', errorText);
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        console.log('❌ Parsed Calendars Error:', errorJson);
-      } catch (e) {
-        console.log('❌ Could not parse error as JSON');
-      }
-    } else {
-      const calendarsData = await calendarsResponse.json();
-      console.log('✅ Calendars Success:', calendarsData);
-    }
-  } catch (error) {
-    console.log('❌ Calendars Exception:', error);
-  }
-
-  // Test 3: Alternative calendar endpoint (singular)
-  try {
-    console.log('📅 Testing singular calendar endpoint...');
-    const altResponse = await fetch('https://graph.microsoft.com/v1.0/me/calendar', {
-      headers: { 
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log('📅 Alternative Calendar API:', {
-      status: altResponse.status,
-      statusText: altResponse.statusText
-    });
-
-    if (altResponse.ok) {
-      const calendarData = await altResponse.json();
-      console.log('✅ Single Calendar Success:', {
-        id: calendarData.id,
-        name: calendarData.name,
-        canEdit: calendarData.canEdit
-      });
-    }
-  } catch (error) {
-    console.log('❌ Alternative Calendar failed:', error);
-  }
-
-  // Test 4: Verificar permisos otorgados
-  try {
-    console.log('🔐 Testing permissions endpoint...');
-    const permissionsResponse = await fetch('https://graph.microsoft.com/v1.0/me/oauth2PermissionGrants', {
-      headers: { 'Authorization': `Bearer ${accessToken}` }
-    });
-    
-    if (permissionsResponse.ok) {
-      const permissions = await permissionsResponse.json();
-      console.log('🔐 Granted Permissions:', permissions.value);
-    } else {
-      console.log('❌ Could not fetch permissions:', permissionsResponse.status);
-    }
-  } catch (error) {
-    console.log('❌ Permissions check failed:', error);
-  }
-
-  // Test 5: Probar endpoint básico de eventos
-  try {
-    console.log('📅 Testing events endpoint...');
-    const eventsResponse = await fetch('https://graph.microsoft.com/v1.0/me/events?$top=1', {
-      headers: { 
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    console.log('📅 Events API:', {
-      status: eventsResponse.status,
-      statusText: eventsResponse.statusText
-    });
-
-    if (eventsResponse.ok) {
-      const eventsData = await eventsResponse.json();
-      console.log('✅ Events Success, count:', eventsData.value?.length || 0);
-    }
-  } catch (error) {
-    console.log('❌ Events test failed:', error);
-  }
-};
+);

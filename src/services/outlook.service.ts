@@ -33,42 +33,65 @@ interface OutlookEvent {
   webLink: string;
 }
 
+
+
+
 /**
- * Obtiene calendarios disponibles del usuario desde Microsoft Graph
- * @param accessToken - Token de acceso válido de Microsoft
- * @returns Array de calendarios disponibles
+ * VERSIÓN CORREGIDA: getOutlookCalendars
+ * 
+ * Maneja mejor los errores de permisos y calendar groups
  */
-// export const getOutlookCalendars = async (accessToken: string): Promise<OutlookCalendar[]> => {
-//   try {
-//     const response = await fetch('https://graph.microsoft.com/v1.0/me/calendars', {
-//       headers: {
-//         'Authorization': `Bearer ${accessToken}`,
-//         'Content-Type': 'application/json'
-//       }
-//     });
-
-//     if (!response.ok) {
-//       const error = await response.json();
-//       throw new BadRequestException(`Failed to fetch Outlook calendars: ${error.error?.message || 'Unknown error'}`);
-//     }
-
-//     const data = await response.json();
-
-//     return data.value.map((calendar: any) => ({
-//       id: calendar.id,
-//       name: calendar.name,
-//       isDefaultCalendar: calendar.isDefaultCalendar || false,
-//       canEdit: calendar.canEdit || false
-//     }));
-
-//   } catch (error) {
-//     console.error('Error fetching Outlook calendars:', error);
-//     throw new BadRequestException('Failed to fetch Outlook calendars');
-//   }
-// };
 export const getOutlookCalendars = async (accessToken: string): Promise<OutlookCalendar[]> => {
+  console.log('🔄 [FIXED] Getting Outlook calendars with enhanced permissions...');
+
+  const foundCalendars = new Map<string, OutlookCalendar>();
+
   try {
-    // INTENTO 1: Endpoint estándar (funciona para cuentas empresariales)
+    // ENFOQUE 1: Endpoint estándar con mejor manejo de errores
+    const standardSuccess = await tryStandardCalendarsEndpoint(accessToken, foundCalendars);
+
+    // ENFOQUE 2: Calendar Groups (mejorado para manejar permisos)
+    if (!standardSuccess) {
+      await tryEnhancedCalendarGroupsEndpoint(accessToken, foundCalendars);
+    }
+
+    // ENFOQUE 3: Fallback específico para errores de permisos
+    if (foundCalendars.size === 0) {
+      await createPermissionFallbackCalendar(foundCalendars);
+    }
+
+    const calendarsArray = Array.from(foundCalendars.values());
+
+    console.log('✅ [FIXED] Total calendars found:', calendarsArray.length);
+    calendarsArray.forEach(cal => {
+      console.log(`   📅 ${cal.name} (${cal.id}) - Primary: ${cal.isDefaultCalendar}`);
+    });
+
+    return calendarsArray;
+
+  } catch (error) {
+    console.error('❌ [FIXED] Error getting calendars:', error);
+
+    // ÚLTIMO RECURSO con información de debugging
+    return [{
+      id: 'primary',
+      name: 'Calendar (Limited Permissions)',
+      isDefaultCalendar: true,
+      canEdit: true
+    }];
+  }
+};
+
+/**
+ * ENFOQUE 1 MEJORADO: Standard endpoint con mejor logging
+ */
+async function tryStandardCalendarsEndpoint(
+  accessToken: string,
+  foundCalendars: Map<string, OutlookCalendar>
+): Promise<boolean> {
+  try {
+    console.log('🔍 [APPROACH 1] Trying standard /me/calendars...');
+
     const response = await fetch('https://graph.microsoft.com/v1.0/me/calendars', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -78,89 +101,198 @@ export const getOutlookCalendars = async (accessToken: string): Promise<OutlookC
 
     if (response.ok) {
       const data = await response.json();
-      console.log('✅ Standard calendars endpoint works');
 
-      return data.value.map((calendar: any) => ({
-        id: calendar.id,
-        name: calendar.name,
-        isDefaultCalendar: calendar.isDefaultCalendar || false,
-        canEdit: calendar.canEdit || false
-      }));
+      data.value?.forEach((calendar: any) => {
+        const calendarData: OutlookCalendar = {
+          id: calendar.id,
+          name: calendar.name,
+          isDefaultCalendar: calendar.isDefaultCalendar || false,
+          canEdit: calendar.canEdit !== false
+        };
+
+        foundCalendars.set(calendar.id, calendarData);
+        console.log(`   ✅ Found: ${calendar.name}`);
+      });
+
+      console.log(`🎯 [APPROACH 1] Standard endpoint found ${data.value?.length || 0} calendars`);
+      return true;
+    } else {
+      const errorText = await response.text();
+      console.log(`⚠️ [APPROACH 1] Standard endpoint failed: ${response.status} - ${errorText}`);
+
+      // Específicamente buscar errores de permisos
+      if (response.status === 403 || errorText.includes('insufficient')) {
+        console.log('🔒 PERMISSIONS ERROR: Need to re-authorize with enhanced scopes');
+      }
+      return false;
     }
+  } catch (error) {
+    console.log(`❌ [APPROACH 1] Exception:`, error);
+    return false;
+  }
+}
 
-    console.log('⚠️ Standard calendars endpoint failed, trying personal account approach...');
+/**
+ * ENFOQUE 2 MEJORADO: Calendar Groups con manejo de permisos
+ */
+async function tryEnhancedCalendarGroupsEndpoint(
+  accessToken: string,
+  foundCalendars: Map<string, OutlookCalendar>
+): Promise<void> {
+  try {
+    console.log('🔍 [APPROACH 2] Trying enhanced calendar groups...');
 
-    // INTENTO 2: Para cuentas personales, verificar si podemos acceder a eventos
-    const eventsResponse = await fetch('https://graph.microsoft.com/v1.0/me/events?$top=1', {
+    // Primero obtener los grupos
+    const groupsResponse = await fetch('https://graph.microsoft.com/v1.0/me/calendarGroups', {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       }
     });
+
+    if (groupsResponse.ok) {
+      const groupsData = await groupsResponse.json();
+      console.log(`📁 Found ${groupsData.value?.length || 0} calendar groups`);
+
+      // Para cada grupo, intentar diferentes endpoints
+      for (const group of groupsData.value || []) {
+        console.log(`🔍 Investigating group: "${group.name}" (${group.id})`);
+
+        // MÉTODO A: Endpoint específico del grupo
+        await tryGroupSpecificEndpoint(accessToken, group, foundCalendars);
+
+        // MÉTODO B: Si el grupo es "Mis calendarios", intentar endpoints alternativos
+        if (group.name === 'Mis calendarios' || group.name === 'My Calendars') {
+          await tryMyCalendarsAlternatives(accessToken, foundCalendars);
+        }
+      }
+    } else {
+      console.log(`⚠️ [APPROACH 2] Calendar groups failed: ${groupsResponse.status}`);
+    }
+  } catch (error) {
+    console.log(`❌ [APPROACH 2] Exception:`, error);
+  }
+}
+
+/**
+ * Intentar endpoint específico del grupo
+ */
+async function tryGroupSpecificEndpoint(
+  accessToken: string,
+  group: any,
+  foundCalendars: Map<string, OutlookCalendar>
+): Promise<void> {
+  try {
+    const groupCalendarsResponse = await fetch(
+      `https://graph.microsoft.com/v1.0/me/calendarGroups/${group.id}/calendars`,
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (groupCalendarsResponse.ok) {
+      const groupCalendarsData = await groupCalendarsResponse.json();
+
+      if (groupCalendarsData.value && groupCalendarsData.value.length > 0) {
+        groupCalendarsData.value.forEach((calendar: any) => {
+          if (!foundCalendars.has(calendar.id)) {
+            const calendarData: OutlookCalendar = {
+              id: calendar.id,
+              name: calendar.name,
+              isDefaultCalendar: calendar.isDefaultCalendar || false,
+              canEdit: calendar.canEdit !== false
+            };
+
+            foundCalendars.set(calendar.id, calendarData);
+            console.log(`   ✅ Found in "${group.name}": ${calendar.name}`);
+          }
+        });
+      } else {
+        console.log(`   📭 Group "${group.name}" appears empty or no access`);
+      }
+    } else {
+      const errorText = await groupCalendarsResponse.text();
+      console.log(`   ❌ Cannot access group "${group.name}": ${groupCalendarsResponse.status} - ${errorText}`);
+    }
+  } catch (error) {
+    console.log(`   ❌ Exception accessing group "${group.name}":`, error);
+  }
+}
+
+/**
+ * Endpoints alternativos para "Mis calendarios" donde debería estar "consultorías"
+ */
+async function tryMyCalendarsAlternatives(
+  accessToken: string,
+  foundCalendars: Map<string, OutlookCalendar>
+): Promise<void> {
+  console.log('🔍 Trying alternatives for "Mis calendarios"...');
+
+  // Alternativa 1: Buscar calendarios por eventos recientes
+  try {
+    const eventsResponse = await fetch(
+      'https://graph.microsoft.com/v1.0/me/events?$select=calendar&$top=50&$filter=start/dateTime ge \'' +
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() + '\'', // Últimos 30 días
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
 
     if (eventsResponse.ok) {
-      console.log('✅ Events access works, assuming default calendar exists');
+      const eventsData = await eventsResponse.json();
+      const calendarNames = new Set<string>();
 
-      // Para cuentas personales, crear un calendario "virtual" por defecto
-      return [{
-        id: 'primary',
-        name: 'Calendar',
-        isDefaultCalendar: true,
-        canEdit: true
-      }];
+      eventsData.value?.forEach((event: any) => {
+        if (event.calendar && event.calendar.name) {
+          calendarNames.add(event.calendar.name);
+
+          // Si encontramos "consultorías" en eventos, crear entrada
+          if (event.calendar.name.toLowerCase().includes('consultor')) {
+            const calendarData: OutlookCalendar = {
+              id: event.calendar.id || `consultorias-${Date.now()}`,
+              name: event.calendar.name,
+              isDefaultCalendar: false,
+              canEdit: true
+            };
+
+            foundCalendars.set(calendarData.id, calendarData);
+            console.log(`   🎯 FOUND "consultorías" via events: ${event.calendar.name}`);
+          }
+        }
+      });
+
+      console.log(`   📅 Calendar names found in recent events:`, Array.from(calendarNames));
     }
-
-    // INTENTO 3: Usar calendar view para verificar acceso
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const todayISO = new Date().toISOString();
-    const tomorrowISO = tomorrow.toISOString();
-
-    const calendarViewResponse = await fetch(
-      `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${todayISO}&endDateTime=${tomorrowISO}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (calendarViewResponse.ok) {
-      console.log('✅ Calendar view works, calendar access available');
-
-      return [{
-        id: 'primary',
-        name: 'Personal Calendar',
-        isDefaultCalendar: true,
-        canEdit: true
-      }];
-    }
-
-    throw new BadRequestException('No calendar access available for this account');
-
   } catch (error) {
-    console.error('Error accessing Outlook calendars:', error);
-
-    // FALLBACK: Para cuentas personales que fallan, asumir calendario básico
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "message" in error &&
-      typeof (error as any).message === "string" &&
-      ((error as any).message.includes('Personal') || (error as any).message.includes('outlook.com'))
-    ) {
-      console.log('🏠 Assuming personal account with basic calendar access');
-
-      return [{
-        id: 'primary',
-        name: 'My Calendar',
-        isDefaultCalendar: true,
-        canEdit: true
-      }];
-    }
-
-    throw new BadRequestException('Failed to fetch Outlook calendars');
+    console.log('   ❌ Events alternative failed:', error);
   }
-};
+}
+
+/**
+ * Fallback específico para errores de permisos
+ */
+async function createPermissionFallbackCalendar(foundCalendars: Map<string, OutlookCalendar>): Promise<void> {
+  console.log('🔒 [APPROACH 4] Creating permission-aware fallback calendar...');
+
+  const fallbackCalendar: OutlookCalendar = {
+    id: 'primary',
+    name: 'Calendar (Re-authorize needed)',
+    isDefaultCalendar: true,
+    canEdit: true
+  };
+
+  foundCalendars.set('primary', fallbackCalendar);
+  console.log('   ⚠️ Fallback calendar created - user needs to re-authorize');
+}
+
+
+
 /**
  * Crea un evento en el calendario de Outlook especificado
  * @param accessToken - Token de acceso válido de Microsoft

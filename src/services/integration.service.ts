@@ -198,7 +198,9 @@ export const connectAppService = async (
 
     case IntegrationAppTypeEnum.OUTLOOK_CALENDAR:
       const microsoftScope = process.env.MICROSOFT_SCOPE ||
-        'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.ReadWrite';
+        // 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.ReadWrite';
+        'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Calendars.ReadBasic';
+
 
       // Verificar variables de entorno requeridas
       if (!process.env.MICROSOFT_CLIENT_ID ||
@@ -216,24 +218,13 @@ export const connectAppService = async (
         `prompt=consent&` + // Fuerza pantalla de consentimiento para refresh token
         `access_type=offline`; // Garantiza refresh token
 
-      console.log("✅ Microsoft OAuth URL generated:", {
+      console.log("✅ Microsoft OAuth URL generated with ENHANCED SCOPES:", {
         clientId: process.env.MICROSOFT_CLIENT_ID,
         redirectUri: process.env.MICROSOFT_REDIRECT_URI,
         scope: microsoftScope,
-        authUrlLength: authUrl.length,
-        fullUrl: authUrl
+        authUrlLength: authUrl.length
       });
       break;
-    // case IntegrationAppTypeEnum.OUTLOOK_CALENDAR: // ← NUEVO
-
-    //   authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?` +
-    //     `client_id=${process.env.MICROSOFT_CLIENT_ID}&` +
-    //     `response_type=code&` +
-    //     `redirect_uri=${encodeURIComponent(process.env.MICROSOFT_REDIRECT_URI!)}&` +
-    //     `scope=${encodeURIComponent(process.env.MICROSOFT_SCOPE!)}&` +
-    //     `state=${encodeURIComponent(state)}`;
-    //   console.log("Outlook OAuth URL:", authUrl);
-    //   break;
     default:
       // Error para tipos no implementados
       throw new BadRequestException("Unsupported app type");
