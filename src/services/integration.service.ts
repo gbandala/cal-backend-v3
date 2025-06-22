@@ -32,7 +32,8 @@ const appTypeToProviderMap: Record<
     IntegrationProviderEnum.GOOGLE,
   [IntegrationAppTypeEnum.ZOOM_MEETING]: IntegrationProviderEnum.ZOOM,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationProviderEnum.MICROSOFT,
-  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: IntegrationProviderEnum.MICROSOFT,
 };
 
 /**
@@ -50,7 +51,8 @@ const appTypeToCategoryMap: Record<
   [IntegrationAppTypeEnum.ZOOM_MEETING]:
     IntegrationCategoryEnum.VIDEO_CONFERENCING,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationCategoryEnum.CALENDAR,
-  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
 };
 
 /**
@@ -63,7 +65,8 @@ const appTypeToTitleMap: Record<IntegrationAppTypeEnum, string> = {
   [IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR]: "Google Meet & Calendar",
   [IntegrationAppTypeEnum.ZOOM_MEETING]: "Zoom",
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: "Outlook Calendar",
-  // [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
+  [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: "Outlook + Teams", // ← NUEVO
 };
 
 /**

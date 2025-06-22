@@ -14,7 +14,8 @@ import { Meeting } from "./meeting.entity";
 export enum EventLocationEnumType {
   GOOGLE_MEET_AND_CALENDAR = 'GOOGLE_MEET_AND_CALENDAR',
   ZOOM_MEETING = 'ZOOM_MEETING',
-  OUTLOOK_WITH_ZOOM = 'OUTLOOK_WITH_ZOOM' // ✅ VALOR ÚNICO
+  OUTLOOK_WITH_ZOOM = 'OUTLOOK_WITH_ZOOM', 
+  OUTLOOK_WITH_TEAMS = 'OUTLOOK_WITH_TEAMS',
 }
 
 @Entity({ name: "events" })
