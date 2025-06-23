@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { User } from './user.entity';
+// import { User } from './user.entity';
 
 @Entity('user_calendars')
 export class UserCalendar {
@@ -37,7 +37,10 @@ export class UserCalendar {
   updatedAt: Date;
 
   // Relaciones
-  @ManyToOne(() => User, user => user.calendars, { onDelete: 'CASCADE' })
+  // @ManyToOne(() => User, user => user.calendars, { onDelete: 'CASCADE' })
+  // @JoinColumn({ name: 'user_id' })
+  // user: User;
+  @ManyToOne('User', 'calendars', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user: any;
 }

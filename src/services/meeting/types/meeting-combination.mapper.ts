@@ -5,7 +5,8 @@
  * MeetingCombination, manteniendo compatibilidad con el sistema actual.
  */
 
-import { EventLocationEnumType } from "../../../database/entities/event.entity";
+// import { EventLocationEnumType } from "../../../database/entities/event.entity";
+import { EventLocationEnumType } from "../../../enums/EventLocationEnum";
 import { MeetingCombination, CombinationUtils } from "./meeting-combination.types";
 import { BadRequestException } from "../../../utils/app-error";
 

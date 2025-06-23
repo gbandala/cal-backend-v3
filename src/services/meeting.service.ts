@@ -19,8 +19,9 @@ import {
 import { CreateMeetingDto } from "../database/dto/meeting.dto";
 import {
   Event,
-  EventLocationEnumType,
+  // EventLocationEnumType,
 } from "../database/entities/event.entity";
+import { EventLocationEnumType } from "../enums/EventLocationEnum";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 
 // ✅ NUEVOS IMPORTS: Sistema Strategy + Factory + Provider
@@ -37,8 +38,9 @@ import { deleteZoomMeetingWithValidation, buildZoomReauthUrl } from '../config/z
 import { zoomOAuth2Client } from '../config/oauth.config';
 import {
   Integration,
-  IntegrationAppTypeEnum,
+  // IntegrationAppTypeEnum,
 } from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum } from "../enums/integration.enum";
 
 // ✅ FACTORY SINGLETON: Inicialización lazy del factory
 let meetingStrategyFactory: MeetingStrategyFactory | null = null;

@@ -15,10 +15,11 @@ import { decodeState } from "../utils/helper";
 import { googleOAuth2Client } from "../config/oauth.config";
 import {
   Integration,
-  IntegrationAppTypeEnum,
-  IntegrationCategoryEnum,
-  IntegrationProviderEnum,
+  // IntegrationAppTypeEnum,
+  // IntegrationCategoryEnum,
+  // IntegrationProviderEnum,
 } from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum, IntegrationProviderEnum, IntegrationCategoryEnum } from "../enums/integration.enum";
 import { zoomOAuth2Client } from "../config/oauth.config";
 import { getMicrosoftUserInfo, getOutlookCalendars } from "../services/outlook.service";
 import { syncOutlookCalendarsService, createDefaultCalendarForUser } from "../services/user-calendars.service";

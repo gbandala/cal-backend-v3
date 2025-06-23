@@ -10,30 +10,14 @@
  */
 export interface CalendarEvent {
   /** ID del evento (se genera automáticamente en creación) */
-  id: string;
-  
-  /** Título del evento */
-  title: string;
-  
-  /** Descripción opcional del evento */
-  description?: string;
-  
-  /** Fecha y hora de inicio */
-  startTime: Date;
-  
-  /** Fecha y hora de fin */
-  endTime: Date;
-  
-  /** Zona horaria del evento */
-  timezone: string;
-  
-  /** Lista de emails de asistentes */
-  attendees: string[];
-  
-  /** URL del meeting (Zoom, Teams, etc.) para incluir en el evento */
-  meetingUrl?: string;
-  
-  /** Datos adicionales específicos del proveedor */
+  id: string;    
+  title: string;    
+  description?: string;   
+  startTime: Date;    
+  endTime: Date;    
+  timezone: string;    
+  attendees: string[];  
+  meetingUrl?: string;   
   providerSpecific?: {
     location?: string;
     isOnlineMeeting?: boolean;

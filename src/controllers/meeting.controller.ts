@@ -19,7 +19,7 @@ import { ZoomMeetingProvider } from '../services/meeting/providers/zoom.provider
 import { OutlookCalendarProvider } from '../services/meeting/providers/calendar/outlook-calendar.provider';
 import { MeetingStrategyFactory } from '../services/meeting/meeting-strategy.factory';
 import { runFoundationTest, validateReadyForPhase3 } from '../services/meeting/test-foundations';
-import { testOutlookZoomIntegration, runAllOutlookZoomTests, generateTestMeetingData } from '../services/test-outlook-zoom-integration';
+import { testOutlookZoomIntegration, runAllOutlookZoomTests } from '../services/test-outlook-zoom-integration';
 
 interface ResponseMeta {
   system: string;

@@ -1,0 +1,374 @@
+{
+  "@types/availability.type.ts": [],
+  "@types/index.d.ts": [
+    "database/entities/user.entity.ts"
+  ],
+  "config/app.config.ts": [
+    "utils/get-env.ts"
+  ],
+  "config/database.config.ts": [
+    "config/app.config.ts"
+  ],
+  "config/http.config.ts": [],
+  "config/oauth.config.ts": [
+    "config/app.config.ts"
+  ],
+  "config/passport.config.ts": [
+    "config/app.config.ts",
+    "services/user.service.ts"
+  ],
+  "config/zoom-token-helpers.ts": [],
+  "controllers/auth.controller.ts": [
+    "config/http.config.ts",
+    "database/dto/auth.dto.ts",
+    "middlewares/withValidation.middleware.ts",
+    "services/auth.service.ts"
+  ],
+  "controllers/availability.controller.ts": [
+    "config/http.config.ts",
+    "database/dto/availability.dto.ts",
+    "database/dto/event.dto.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "middlewares/withValidation.middleware.ts",
+    "services/availability.service.ts"
+  ],
+  "controllers/calendar.controller.ts": [
+    "database/dto/calendar.dto.ts",
+    "services/calendar.service.ts"
+  ],
+  "controllers/debug.controller.ts": [
+    "config/database.config.ts",
+    "config/http.config.ts",
+    "database/entities/integration.entity.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "services/outlook-personal.service.ts",
+    "services/token.service.ts"
+  ],
+  "controllers/event.controller.ts": [
+    "config/http.config.ts",
+    "database/dto/event.dto.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "middlewares/withValidation.middleware.ts",
+    "services/event.service.ts"
+  ],
+  "controllers/integration.controller.ts": [
+    "config/app.config.ts",
+    "config/database.config.ts",
+    "config/http.config.ts",
+    "config/oauth.config.ts",
+    "database/dto/integration.dto.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/user-calendar.entity.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "middlewares/withValidation.middleware.ts",
+    "services/integration.service.ts",
+    "services/outlook.service.ts",
+    "services/user-calendars.service.ts",
+    "utils/helper.ts"
+  ],
+  "controllers/meeting.controller.ts": [
+    "config/http.config.ts",
+    "database/dto/meeting.dto.ts",
+    "enums/meeting.enum.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "middlewares/withValidation.middleware.ts",
+    "services/meeting.service.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "services/meeting/providers/calendar/outlook-calendar.provider.ts",
+    "services/meeting/providers/zoom.provider.ts",
+    "services/meeting/strategies/zoom-outlook-calendar.strategy.ts",
+    "services/meeting/test-foundations.ts",
+    "services/test-outlook-zoom-integration.ts"
+  ],
+  "controllers/user-calendars.controller.ts": [
+    "config/http.config.ts",
+    "database/entities/integration.entity.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "services/integration.service.ts",
+    "services/token.service.ts",
+    "services/user-calendars.service.ts"
+  ],
+  "database/database.ts": [
+    "config/database.config.ts"
+  ],
+  "database/dto/auth.dto.ts": [],
+  "database/dto/availability.dto.ts": [
+    "database/entities/day-availability.ts"
+  ],
+  "database/dto/calendar.dto.ts": [],
+  "database/dto/event.dto.ts": [
+    "database/entities/event.entity.ts"
+  ],
+  "database/dto/integration.dto.ts": [
+    "database/entities/integration.entity.ts"
+  ],
+  "database/dto/meeting.dto.ts": [],
+  "database/entities/availability.entity.ts": [
+    "database/entities/day-availability.ts",
+    "database/entities/user.entity.ts"
+  ],
+  "database/entities/day-availability.ts": [
+    "database/entities/availability.entity.ts"
+  ],
+  "database/entities/event.entity.ts": [
+    "database/entities/integration.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "database/entities/user.entity.ts"
+  ],
+  "database/entities/integration.entity.ts": [
+    "database/entities/user.entity.ts"
+  ],
+  "database/entities/meeting.entity.ts": [
+    "database/entities/event.entity.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/user.entity.ts"
+  ],
+  "database/entities/user-calendar.entity.ts": [
+    "database/entities/user.entity.ts"
+  ],
+  "database/entities/user.entity.ts": [
+    "database/entities/availability.entity.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "database/entities/user-calendar.entity.ts",
+    "utils/bcrypt.ts"
+  ],
+  "enums/EventLocationEnum.ts": [],
+  "enums/error-code.enum.ts": [],
+  "enums/meeting.enum.ts": [],
+  "index.ts": [
+    "config/app.config.ts",
+    "config/http.config.ts",
+    "config/passport.config.ts",
+    "database/database.ts",
+    "middlewares/asyncHandler.middeware.ts",
+    "middlewares/errorHandler.middleware.ts",
+    "routes/auth.route.ts",
+    "routes/availability.route.ts",
+    "routes/calendar.route.ts",
+    "routes/debug.routes.ts",
+    "routes/event.route.ts",
+    "routes/integration.route.ts",
+    "routes/meeting.route.ts",
+    "routes/user-calendars.routes.ts"
+  ],
+  "middlewares/asyncHandler.middeware.ts": [],
+  "middlewares/errorHandler.middleware.ts": [
+    "config/http.config.ts",
+    "utils/app-error.ts"
+  ],
+  "middlewares/withValidation.middleware.ts": [
+    "config/http.config.ts",
+    "enums/error-code.enum.ts",
+    "middlewares/asyncHandler.middeware.ts"
+  ],
+  "routes/auth.route.ts": [
+    "controllers/auth.controller.ts"
+  ],
+  "routes/availability.route.ts": [
+    "config/passport.config.ts",
+    "controllers/availability.controller.ts"
+  ],
+  "routes/calendar.route.ts": [
+    "config/passport.config.ts",
+    "controllers/calendar.controller.ts"
+  ],
+  "routes/debug.routes.ts": [
+    "controllers/debug.controller.ts"
+  ],
+  "routes/event.route.ts": [
+    "config/passport.config.ts",
+    "controllers/event.controller.ts"
+  ],
+  "routes/integration.route.ts": [
+    "config/passport.config.ts",
+    "controllers/integration.controller.ts"
+  ],
+  "routes/meeting.route.ts": [
+    "config/passport.config.ts",
+    "controllers/meeting.controller.ts"
+  ],
+  "routes/user-calendars.routes.ts": [
+    "controllers/user-calendars.controller.ts"
+  ],
+  "services/auth.service.ts": [
+    "config/database.config.ts",
+    "database/dto/auth.dto.ts",
+    "database/entities/availability.entity.ts",
+    "database/entities/day-availability.ts",
+    "database/entities/user.entity.ts",
+    "utils/app-error.ts",
+    "utils/jwt.ts"
+  ],
+  "services/availability.service.ts": [
+    "@types/availability.type.ts",
+    "config/database.config.ts",
+    "database/dto/availability.dto.ts",
+    "database/entities/availability.entity.ts",
+    "database/entities/day-availability.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/user.entity.ts",
+    "utils/app-error.ts"
+  ],
+  "services/calendar.service.ts": [
+    "config/database.config.ts",
+    "database/dto/calendar.dto.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/user-calendar.entity.ts",
+    "database/entities/user.entity.ts"
+  ],
+  "services/event.service.ts": [
+    "config/database.config.ts",
+    "database/dto/event.dto.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "database/entities/user.entity.ts",
+    "enums/meeting.enum.ts",
+    "services/meeting.service.ts",
+    "utils/app-error.ts",
+    "utils/helper.ts"
+  ],
+  "services/integration.service.ts": [
+    "config/database.config.ts",
+    "config/oauth.config.ts",
+    "database/entities/integration.entity.ts",
+    "utils/app-error.ts",
+    "utils/helper.ts"
+  ],
+  "services/meeting.service.ts": [
+    "config/database.config.ts",
+    "config/oauth.config.ts",
+    "config/zoom-token-helpers.ts",
+    "database/dto/meeting.dto.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "enums/meeting.enum.ts",
+    "services/integration.service.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "services/meeting/providers/calendar/outlook-calendar.provider.ts",
+    "services/meeting/providers/zoom.provider.ts",
+    "services/meeting/strategies/zoom-outlook-calendar.strategy.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/interfaces/calendar-provider.interface.ts": [],
+  "services/meeting/interfaces/meeting-provider.interface.ts": [
+    "services/meeting/interfaces/calendar-provider.interface.ts"
+  ],
+  "services/meeting/interfaces/meeting-strategy.interface.ts": [
+    "database/dto/meeting.dto.ts",
+    "database/entities/meeting.entity.ts"
+  ],
+  "services/meeting/meeting-refactored.module.ts": [
+    "services/meeting/meeting-refactored.service.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "services/meeting/providers/calendar/outlook-calendar.provider.ts",
+    "services/meeting/providers/zoom.provider.ts",
+    "services/meeting/strategies/zoom-outlook-calendar.strategy.ts"
+  ],
+  "services/meeting/meeting-refactored.service.ts": [
+    "config/database.config.ts",
+    "database/dto/meeting.dto.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "enums/meeting.enum.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/meeting-strategy.factory.ts": [
+    "database/entities/event.entity.ts",
+    "services/meeting/interfaces/meeting-strategy.interface.ts",
+    "services/meeting/strategies/zoom-outlook-calendar.strategy.ts",
+    "services/meeting/types/meeting-combination.mapper.ts",
+    "services/meeting/types/meeting-combination.types.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/providers/calendar/outlook-calendar.provider.ts": [
+    "services/meeting/interfaces/calendar-provider.interface.ts",
+    "services/outlook.service.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/providers/zoom.provider.ts": [
+    "config/oauth.config.ts",
+    "config/zoom-token-helpers.ts",
+    "services/integration.service.ts",
+    "services/meeting/interfaces/calendar-provider.interface.ts",
+    "services/meeting/interfaces/meeting-provider.interface.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/strategies/zoom-outlook-calendar.strategy.ts": [
+    "config/database.config.ts",
+    "database/dto/meeting.dto.ts",
+    "database/entities/event.entity.ts",
+    "database/entities/integration.entity.ts",
+    "database/entities/meeting.entity.ts",
+    "services/meeting/interfaces/meeting-strategy.interface.ts",
+    "services/meeting/providers/calendar/outlook-calendar.provider.ts",
+    "services/meeting/providers/zoom.provider.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/test-foundations.ts": [
+    "database/entities/event.entity.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "services/meeting/test-zoom-outlook.ts",
+    "services/meeting/types/meeting-combination.mapper.ts",
+    "services/meeting/types/meeting-combination.types.ts"
+  ],
+  "services/meeting/test-zoom-outlook.ts": [
+    "database/dto/meeting.dto.ts",
+    "database/entities/event.entity.ts",
+    "services/meeting/meeting-refactored.service.ts",
+    "services/meeting/meeting-strategy.factory.ts",
+    "services/meeting/providers/calendar/outlook-calendar.provider.ts",
+    "services/meeting/providers/zoom.provider.ts",
+    "services/meeting/strategies/zoom-outlook-calendar.strategy.ts"
+  ],
+  "services/meeting/types/meeting-combination.mapper.ts": [
+    "database/entities/event.entity.ts",
+    "services/meeting/types/meeting-combination.types.ts",
+    "utils/app-error.ts"
+  ],
+  "services/meeting/types/meeting-combination.types.ts": [
+    "database/entities/integration.entity.ts"
+  ],
+  "services/outlook-personal.service.ts": [],
+  "services/outlook.service.ts": [
+    "utils/app-error.ts"
+  ],
+  "services/test-outlook-zoom-integration.ts": [
+    "database/dto/meeting.dto.ts",
+    "services/meeting.service.ts"
+  ],
+  "services/token.service.ts": [
+    "config/database.config.ts",
+    "database/entities/integration.entity.ts",
+    "services/outlook.service.ts",
+    "utils/app-error.ts"
+  ],
+  "services/user-calendars.service.ts": [
+    "config/database.config.ts",
+    "database/entities/user-calendar.entity.ts",
+    "services/outlook-personal.service.ts",
+    "services/outlook.service.ts",
+    "utils/app-error.ts"
+  ],
+  "services/user.service.ts": [
+    "config/database.config.ts",
+    "database/entities/user.entity.ts"
+  ],
+  "utils/app-error.ts": [
+    "config/http.config.ts",
+    "enums/error-code.enum.ts"
+  ],
+  "utils/bcrypt.ts": [],
+  "utils/calendar.helper.ts": [
+    "database/dto/calendar.dto.ts"
+  ],
+  "utils/get-env.ts": [],
+  "utils/helper.ts": [],
+  "utils/jwt.ts": [
+    "config/app.config.ts"
+  ]
+}

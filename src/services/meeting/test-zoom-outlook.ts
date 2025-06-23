@@ -281,7 +281,8 @@
  * usando Zoom para videoconferencia + Outlook Calendar para tracking.
  */
 
-import { EventLocationEnumType } from "../../database/entities/event.entity";
+// import { EventLocationEnumType } from "../../database/entities/event.entity";
+import { EventLocationEnumType } from "../../enums/EventLocationEnum";
 import { MeetingRefactoredService } from "./meeting-refactored.service";
 import { MeetingStrategyFactory } from "./meeting-strategy.factory";
 import { ZoomOutlookCalendarStrategy } from "./strategies/zoom-outlook-calendar.strategy";

@@ -11,8 +11,9 @@
 import { AppDataSource } from "../../../config/database.config";
 import { 
   Integration, 
-  IntegrationAppTypeEnum 
+  // IntegrationAppTypeEnum 
 } from "../../../database/entities/integration.entity";
+import { IntegrationAppTypeEnum } from "../../../enums/integration.enum";
 import { Event } from "../../../database/entities/event.entity";
 import { Meeting, MeetingStatus } from "../../../database/entities/meeting.entity";
 import { CreateMeetingDto } from "../../../database/dto/meeting.dto";
@@ -86,7 +87,7 @@ export class ZoomOutlookCalendarStrategy implements IMeetingStrategy {
       const calendarEventId = await this.outlookProvider.createEvent(calendarId, {
         id: '', // Se genera automáticamente
         title: `${guestName} - ${event.title}`,
-        description: this.buildEventDescription(additionalInfo, meetingInfo.joinUrl),
+        description: additionalInfo,
         startTime,
         endTime,
         timezone,

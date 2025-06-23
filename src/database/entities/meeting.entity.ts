@@ -6,9 +6,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { User } from "./user.entity";
-import { Event } from "./event.entity";
-import { IntegrationAppTypeEnum } from "./integration.entity";
+// import { User } from "./user.entity";
+// import { Event } from "./event.entity";
+// import { IntegrationAppTypeEnum } from "./integration.entity";
+// import { IntegrationAppTypeEnum } from "../../enums/integration.enum";
 
 export enum MeetingStatus {
   SCHEDULED = "SCHEDULED",
@@ -20,11 +21,16 @@ export class Meeting {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @ManyToOne(() => User, (user) => user.meetings)
-  user: User;
+  // @ManyToOne(() => User, (user) => user.meetings)
+  // user: User;
 
-  @ManyToOne(() => Event, (event) => event.meetings)
-  event: Event;
+  // @ManyToOne(() => Event, (event) => event.meetings)
+  // event: Event;
+  @ManyToOne('User', 'meetings')
+  user: any;
+
+  @ManyToOne('Event', 'meetings')
+  event: any;
 
   @Column()
   guestName: string;

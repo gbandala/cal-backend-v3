@@ -6,7 +6,8 @@ import {
   IsString,
   IsUUID,
 } from "class-validator";
-import { EventLocationEnumType } from "../entities/event.entity";
+// import { EventLocationEnumType } from "../entities/event.entity";
+import { EventLocationEnumType } from "../../enums/EventLocationEnum";
 
 export class CreateEventDto {
   @IsString()

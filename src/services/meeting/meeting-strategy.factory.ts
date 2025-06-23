@@ -5,7 +5,8 @@
  * y crea la instancia correspondiente con sus dependencias.
  */
 
-import { EventLocationEnumType } from "../../database/entities/event.entity";
+// import { EventLocationEnumType } from "../../database/entities/event.entity";
+import { EventLocationEnumType } from "../../enums/EventLocationEnum";
 import { IMeetingStrategy } from "./interfaces/meeting-strategy.interface";
 import { 
   MeetingCombination, 

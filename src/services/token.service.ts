@@ -1,6 +1,7 @@
 // services/token.service.ts
 import { AppDataSource } from "../config/database.config";
-import { Integration, IntegrationAppTypeEnum, IntegrationProviderEnum } from "../database/entities/integration.entity";
+import { Integration} from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum, IntegrationProviderEnum } from "../enums/integration.enum";
 import { BadRequestException } from "../utils/app-error";
 import { validateMicrosoftToken } from "./outlook.service";
 

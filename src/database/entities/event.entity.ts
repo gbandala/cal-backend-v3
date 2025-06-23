@@ -7,16 +7,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
-import { IntegrationAppTypeEnum } from "./integration.entity";
+import { EventLocationEnumType } from "../../enums/EventLocationEnum";
 import { User } from "./user.entity";
 import { Meeting } from "./meeting.entity";
 
-export enum EventLocationEnumType {
-  GOOGLE_MEET_AND_CALENDAR = 'GOOGLE_MEET_AND_CALENDAR',
-  ZOOM_MEETING = 'ZOOM_MEETING',
-  OUTLOOK_WITH_ZOOM = 'OUTLOOK_WITH_ZOOM', 
-  OUTLOOK_WITH_TEAMS = 'OUTLOOK_WITH_TEAMS',
-}
 
 @Entity({ name: "events" })
 export class Event {

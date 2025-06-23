@@ -8,8 +8,7 @@
 import { 
   IMeetingProvider, 
   MeetingConfig, 
-  MeetingInfo,
-  MeetingOperationResult 
+  MeetingInfo,   
 } from "../interfaces/meeting-provider.interface";
 import{TokenConfig} from "../../../services/meeting/interfaces/calendar-provider.interface";
 import { validateZoomToken } from "../../integration.service";
@@ -292,44 +291,4 @@ export class ZoomMeetingProvider implements IMeetingProvider {
     );
   }
 
-  /**
-   * Construye configuraciones por defecto para meetings
-   */
-  private getDefaultMeetingSettings() {
-    return {
-      host_video: true,
-      participant_video: true,
-      join_before_host: false,
-      waiting_room: true,
-      mute_upon_entry: false,
-      auto_recording: 'none',
-      alternative_hosts: '',
-      approval_type: 2, // Manual approval
-      registration_type: 1, // Attendees register once
-      password: '', // Zoom generará automáticamente
-      use_pmi: false // No usar Personal Meeting ID
-    };
-  }
-
-  /**
-   * Valida la configuración del meeting antes de crear
-   */
-  private validateMeetingConfig(config: MeetingConfig): void {
-    if (!config.topic || config.topic.trim().length === 0) {
-      throw new BadRequestException('Meeting topic is required');
-    }
-
-    if (config.endTime <= config.startTime) {
-      throw new BadRequestException('End time must be after start time');
-    }
-
-    const duration = (config.endTime.getTime() - config.startTime.getTime()) / (1000 * 60);
-    if (duration > 1440) { // 24 horas
-      throw new BadRequestException('Meeting duration cannot exceed 24 hours');
-    }
-
-    if (duration < 1) {
-      throw new BadRequestException('Meeting duration must be at least 1 minute');
-    }
-  }
 }

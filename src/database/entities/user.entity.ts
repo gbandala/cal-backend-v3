@@ -11,11 +11,11 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { compareValue, hashValue } from "../../utils/bcrypt";
-import { Integration } from "./integration.entity";
-import { Event } from "./event.entity";
+// import { Integration } from "./integration.entity";
+// import { Event } from "./event.entity";
 import { Availability } from "./availability.entity";
-import { Meeting } from "./meeting.entity";
-import { UserCalendar } from './user-calendar.entity';
+// import { Meeting } from "./meeting.entity";
+// import { UserCalendar } from './user-calendar.entity';
 
 @Entity({ name: "users" })
 export class User {
@@ -40,15 +40,23 @@ export class User {
   @Column({ nullable: true })
   timezone: string;
 
-  @OneToMany(() => Event, (event) => event.user, {
+  // @OneToMany(() => Event, (event) => event.user, {
+  //   cascade: true,
+  // })
+  // events: Event[];
+  @OneToMany('Event', 'user', {
     cascade: true,
   })
-  events: Event[];
+  events: any[];
 
-  @OneToMany(() => Integration, (integration) => integration.user, {
+  // @OneToMany(() => Integration, (integration) => integration.user, {
+  //   cascade: true,
+  // })
+  // integrations: Integration[];
+  @OneToMany('Integration', 'user', {
     cascade: true,
   })
-  integrations: Integration[];
+  integrations: any[];
 
   @OneToOne(() => Availability, (availability) => availability.user, {
     cascade: true,
@@ -56,10 +64,15 @@ export class User {
   @JoinColumn()
   availability: Availability;
 
-  @OneToMany(() => Meeting, (meeting) => meeting.user, {
+  // @OneToMany(() => Meeting, (meeting) => meeting.user, {
+  //   cascade: true,
+  // })
+  // meetings: Meeting[];
+
+  @OneToMany('Meeting', 'user', {
     cascade: true,
   })
-  meetings: Meeting[];
+  meetings: any[];
 
   @CreateDateColumn()
   createdAt: Date;
@@ -67,8 +80,10 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => UserCalendar, calendar => calendar.user)
-  calendars: UserCalendar[];
+  // @OneToMany(() => UserCalendar, calendar => calendar.user)
+  // calendars: UserCalendar[];
+  @OneToMany('UserCalendar', 'user')
+  calendars: any[];
 
   @BeforeInsert()
   @BeforeUpdate()

@@ -1,10 +1,15 @@
 import { AppDataSource } from "../config/database.config";
 import {
   Integration,
+  // IntegrationAppTypeEnum,
+  // IntegrationCategoryEnum,
+  // IntegrationProviderEnum,
+} from "../database/entities/integration.entity";
+import {
   IntegrationAppTypeEnum,
   IntegrationCategoryEnum,
   IntegrationProviderEnum,
-} from "../database/entities/integration.entity";
+} from "../enums/integration.enum";
 import { BadRequestException } from "../utils/app-error";
 import { googleOAuth2Client, zoomOAuth2Client } from "../config/oauth.config";
 import { encodeState } from "../utils/helper";

@@ -2,8 +2,9 @@ import { AppDataSource } from "../config/database.config";
 import { CreateEventDto, UserNameAndSlugDTO } from "../database/dto/event.dto";
 import {
   Event,
-  EventLocationEnumType,
+  // EventLocationEnumType,
 } from "../database/entities/event.entity";
+import { EventLocationEnumType } from "../enums/EventLocationEnum";
 import { User } from "../database/entities/user.entity";
 import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { slugify } from "../utils/helper";
@@ -12,8 +13,9 @@ import { MeetingStatus } from "../enums/meeting.enum";
 import { cancelMeetingService } from "./meeting.service"; // Importar servicio de cancelación de reuniones
 import { 
   Integration, 
-  IntegrationAppTypeEnum 
+  // IntegrationAppTypeEnum 
 } from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum } from "../enums/integration.enum"; 
 
 
 /**

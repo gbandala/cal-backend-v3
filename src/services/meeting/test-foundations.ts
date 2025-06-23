@@ -5,7 +5,8 @@
  * Se puede eliminar después de la Fase 2.
  */
 
-import { EventLocationEnumType } from "../../database/entities/event.entity";
+// import { EventLocationEnumType } from "../../database/entities/event.entity";
+import { EventLocationEnumType } from "../../enums/EventLocationEnum";
 import { MeetingStrategyFactory } from "./meeting-strategy.factory";
 import { 
   mapLocationTypeToCombination,

@@ -7,10 +7,11 @@ import { getPersonalOutlookCalendars, isPersonalOutlookAccount } from "../servic
 import { AppDataSource } from "../config/database.config";
 import {
   Integration,
-  IntegrationAppTypeEnum,
-  IntegrationCategoryEnum,
-  IntegrationProviderEnum,
+  // IntegrationAppTypeEnum,
+  // IntegrationCategoryEnum,
+  // IntegrationProviderEnum,
 } from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum, IntegrationProviderEnum } from "../enums/integration.enum";
 /**
  * 🚨 ENDPOINT TEMPORAL DE DEBUG
  * 

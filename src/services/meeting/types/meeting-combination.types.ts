@@ -5,7 +5,8 @@
  * y mapea desde los EventLocationEnumType existentes.
  */
 
-import { IntegrationAppTypeEnum } from "../../../database/entities/integration.entity";
+// import { IntegrationAppTypeEnum } from "../../../database/entities/integration.entity";
+import { IntegrationAppTypeEnum } from "../../../enums/integration.enum";
 
 /**
  * Enum de todas las combinaciones de meeting soportadas

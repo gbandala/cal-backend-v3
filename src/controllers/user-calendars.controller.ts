@@ -12,7 +12,8 @@ import { getValidMicrosoftToken, getMicrosoftIntegration } from "../services/tok
 import { 
   checkIntegrationService
 } from "../services/integration.service";
-import { IntegrationAppTypeEnum } from "../database/entities/integration.entity";
+// import { IntegrationAppTypeEnum } from "../database/entities/integration.entity";
+import { IntegrationAppTypeEnum } from "../enums/integration.enum";
 
 /**
  * CONTROLLER PARA GESTIÓN DE CALENDARIOS DE USUARIO
