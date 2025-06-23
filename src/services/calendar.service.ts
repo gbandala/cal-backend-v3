@@ -4,7 +4,6 @@ import { UserCalendar } from '../database/entities/user-calendar.entity';
 import { User } from '../database/entities/user.entity';
 import { Integration } from '../database/entities/integration.entity';
 import { CalendarSummaryDto, CalendarFilterDto, SyncCalendarsDto } from '../database/dto/calendar.dto';
-import { formatCalendarList, validateCalendarAccess } from '../utils/calendar.helper';
 import { google } from 'googleapis';
 
 export class CalendarService {

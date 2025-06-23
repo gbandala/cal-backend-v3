@@ -7,7 +7,7 @@
  * Este servicio implementa estrategias alternativas que SÍ funcionan
  */
 
-import { BadRequestException } from "../utils/app-error";
+
 
 interface PersonalOutlookCalendar {
   id: string;

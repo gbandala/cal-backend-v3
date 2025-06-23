@@ -1,4 +1,3 @@
-import { title } from "process";
 import { AppDataSource } from "../config/database.config";
 import {
   Integration,
@@ -10,20 +9,7 @@ import { BadRequestException } from "../utils/app-error";
 import { googleOAuth2Client, zoomOAuth2Client } from "../config/oauth.config";
 import { encodeState } from "../utils/helper";
 
-/**
- * MAPEOS DE CONFIGURACIÓN ESTÁTICA
- * 
- * Estos mapeos relacionan tipos de aplicación con sus características.
- * Permiten mantener la configuración centralizada y fácil de mantener.
- * Al agregar nuevas integraciones, solo se actualizan estos mapeos.
- */
 
-/**
- * MAPEO: Tipo de App → Proveedor Base
- * 
- * Relaciona cada aplicación específica con su proveedor principal.
- * Ejemplo: Google Meet y Google Calendar ambos usan proveedor GOOGLE
- */
 const appTypeToProviderMap: Record<
   IntegrationAppTypeEnum,
   IntegrationProviderEnum

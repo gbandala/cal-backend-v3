@@ -7,7 +7,6 @@ import { Availability } from "../database/entities/availability.entity";
 import { DayOfWeekEnum } from "../database/entities/day-availability";
 import { Event } from "../database/entities/event.entity";
 import { addDays, addMinutes, format, parseISO } from "date-fns";
-import { toZonedTime, formatInTimeZone } from "date-fns-tz";
 
 
 /**
@@ -336,38 +335,18 @@ function generateAvailableTimeSlots(
 }
 
 /**
- * FUNCIÓN AUXILIAR: Verificar si un slot específico está disponible
+ * FUNCIÓN AUXILIAR: Verificar si un slot de tiempo está disponible
  * 
- * @param slotStart - Inicio del slot propuesto
- * @param slotEnd - Fin del slot propuesto
+ * @param slotStart - Hora de inicio del slot
+ * @param slotEnd - Hora de fin del slot
  * @param meetings - Array de reuniones existentes
- * @returns boolean - true si está disponible, false si hay conflicto
+ * @returns boolean - true si el slot está disponible, false si hay conflicto
  * 
- * ALGORITMO DE DETECCIÓN DE SOLAPAMIENTO:
- * Dos intervalos se solapan si:
- * - El inicio del slot es antes del fin de la reunión Y
- * - El fin del slot es después del inicio de la reunión
+ * ALGORITMO:
+ * 1. Iterar sobre cada reunión existente
+ * 2. Verificar si el slot se solapa con alguna reunión programada
+ * 3. Retornar false si hay conflicto, true si no hay conflictos
  */
-// function isSlotAvailable(
-//   slotStart: Date,
-//   slotEnd: Date,
-//   meetings: { startTime: Date; endTime: Date }[]
-// ): boolean {
-//   // Verificar contra cada reunión existente
-//   try {
-//     for (const meeting of meetings) {
-//       // Detección de solapamiento: si hay cualquier intersección, el slot no está disponible
-//       if (slotStart < meeting.endTime && slotEnd > meeting.startTime) {
-//         return false; // Conflicto detectado
-//       }
-//     }
-//     return true; // Sin conflictos: slot disponible
-//   } catch (error) {
-//     console.log('Error en isSlotAvailable', error);
-//     return false;
-//   }
-
-// }
 function isSlotAvailable(
   slotStart: Date,
   slotEnd: Date,

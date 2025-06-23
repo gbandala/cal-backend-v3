@@ -6,7 +6,7 @@
  */
 
 import { CreateMeetingDto } from "../database/dto/meeting.dto";
-import { EventLocationEnumType } from "../database/entities/event.entity";
+// import { EventLocationEnumType } from "../database/entities/event.entity";
 import { createMeetBookingForGuestService, cancelMeetingService } from "./meeting.service";
 
 /**

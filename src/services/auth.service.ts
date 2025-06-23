@@ -14,62 +14,7 @@ import {
 } from "../database/entities/day-availability";
 import { signJwtToken } from "../utils/jwt";
 
-/**
- * FUNCIÓN AUXILIAR: Crear fecha con hora específica en timezone dado
- * 
- * @param hour - Hora en formato 24h (ej: 9 para 9 AM, 17 para 5 PM)
- * @param minute - Minutos (opcional, default 0)
- * @param timezone - Timezone (ej: 'America/Mexico_City', 'Europe/Madrid')
- * @returns Date - Fecha con la hora especificada en el timezone
- */
-function createTimeInTimezone(hour: number, minute: number = 0, timezone: string): Date {
-  // Crear fecha base (usar fecha fija para consistencia, solo importa la hora)
-  const baseDate = new Date('2025-03-01');
 
-  // Si el timezone es UTC, usar directamente
-  if (timezone === 'UTC' || timezone === 'Z') {
-    return new Date(`2025-03-01T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`);
-  }
-
-  // Para otros timezones, usar Intl.DateTimeFormat para obtener el offset
-  try {
-    // Crear fecha en el timezone especificado
-    const tempDate = new Date('2025-03-01T12:00:00Z');
-
-    // Obtener el offset del timezone
-    const formatter = new Intl.DateTimeFormat('en', {
-      timeZone: timezone,
-      timeZoneName: 'longOffset'
-    });
-
-    const parts = formatter.formatToParts(tempDate);
-    const offsetPart = parts.find(part => part.type === 'timeZoneName');
-
-    if (offsetPart && offsetPart.value.includes('GMT')) {
-      // Parsear offset (ej: "GMT-6" -> -6)
-      const offsetMatch = offsetPart.value.match(/GMT([+-]\d{1,2})/);
-      if (offsetMatch) {
-        const offsetHours = parseInt(offsetMatch[1]);
-        // Crear fecha ajustada al timezone
-        const utcTime = new Date(`2025-03-01T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`);
-        utcTime.setHours(utcTime.getHours() - offsetHours);
-        return utcTime;
-      }
-    }
-
-    // Fallback: usar toLocaleString para obtener la hora en el timezone
-    const localTime = new Date(`2025-03-01T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00`);
-    const utcTime = new Date(localTime.toLocaleString("en-US", { timeZone: "UTC" }));
-    const targetTime = new Date(localTime.toLocaleString("en-US", { timeZone: timezone }));
-    const diff = utcTime.getTime() - targetTime.getTime();
-
-    return new Date(localTime.getTime() + diff);
-
-  } catch (error) {
-    console.warn(`Invalid timezone "${timezone}", falling back to UTC`);
-    return new Date(`2025-03-01T${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:00Z`);
-  }
-}
 /**
  * FUNCIÓN AUXILIAR: Generar sufijo aleatorio para usernames únicos
  * 
@@ -141,10 +86,6 @@ export const registerService = async (registerDto: RegisterDto, timezone: string
     username,       // Username generado automáticamente
     timezone
   });
-  // console.log("User created:", user);
-  // const dayAvailability = new DayAvailability();
-  // dayAvailability.startTime = "09:00";
-  // dayAvailability.endTime = "17:30";
 
   // PASO 4: Crear configuración de disponibilidad predeterminada
   const availability = availabilityRepository.create({
@@ -153,9 +94,6 @@ export const registerService = async (registerDto: RegisterDto, timezone: string
     days: Object.values(DayOfWeekEnum).map((day) => {
       return dayAvailabilityRepository.create({
         day: day, // Día específico (MONDAY, TUESDAY, etc.)
-        // Horarios predeterminados: 9:00 AM - 5:00 PM UTC
-        // startTime : createTimeInTimezone(9, 0, timezone),  // 9:00 AM de la zona horaria del usuario
-        // endTime : createTimeInTimezone(17, 0, timezone),  // 5:00 PM de la zona horaria del usuario
         startTime: '09:00',  // 9:00 AM de la zona horaria del usuario
         endTime: '17:00',  // 5:00 PM de la zona horaria del usuario
         // Disponible de lunes a viernes, fines de semana libres
