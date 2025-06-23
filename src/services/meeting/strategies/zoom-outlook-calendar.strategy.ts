@@ -81,7 +81,12 @@ export class ZoomOutlookCalendarStrategy implements IMeetingStrategy {
       });
 
       // PASO 5: Crear evento en Outlook Calendar
+      console.log('-----------------------------------------------------------------');
       console.log('📅 [ZOOM_OUTLOOK_STRATEGY] Step 5: Creating Outlook Calendar event');
+      console.log('startTime:', startTime);
+      console.log('endTime:', endTime);
+      console.log('timezone:', timezone);
+      
       const calendarId = this.determineCalendarId(event, outlookIntegration);
       
       const calendarEventId = await this.outlookProvider.createEvent(calendarId, {

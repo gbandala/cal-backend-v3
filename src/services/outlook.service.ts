@@ -20,8 +20,8 @@ interface OutlookCalendar {
 interface OutlookEventData {
   title: string;
   description?: string;
-  startTime: Date;
-  endTime: Date;
+  startTime: Date | string; // Puede ser Date o ISO string
+  endTime: Date | string; // Puede ser Date o ISO string
   timezone: string;
   attendeeEmail: string;
   organizerEmail: string;
@@ -293,6 +293,7 @@ async function createPermissionFallbackCalendar(foundCalendars: Map<string, Outl
 
 
 
+
 /**
  * Crea un evento en el calendario de Outlook especificado
  * @param accessToken - Token de acceso válido de Microsoft
@@ -382,11 +383,21 @@ export const createOutlookEvent = async (
   calendarId: string,
   eventData: OutlookEventData
 ): Promise<OutlookEvent> => {
+
+
+  
   try {
+
+    
     let description = eventData.description || '';
     if (eventData.zoomJoinUrl) {
       description += `\n\nJoin Zoom Meeting: ${eventData.zoomJoinUrl}`;
+      
     }
+
+    //generar startTime y endTime en formato ISO sin Z para el calendario de Outlook
+    const startTime = new Date(eventData.startTime).toISOString().slice(0, -1);
+    const endTime = new Date(eventData.endTime).toISOString().slice(0, -1);
 
     const requestBody = {
       subject: eventData.title,
@@ -395,11 +406,11 @@ export const createOutlookEvent = async (
         content: description
       },
       start: {
-        dateTime: eventData.startTime.toISOString(),
+        dateTime: startTime,
         timeZone: eventData.timezone
       },
       end: {
-        dateTime: eventData.endTime.toISOString(),
+        dateTime: endTime,
         timeZone: eventData.timezone
       },
       attendees: [
@@ -414,6 +425,13 @@ export const createOutlookEvent = async (
       isOnlineMeeting: false
     };
 
+    console.log('requestBody', requestBody);  
+
+    // console.log('🔄 Creating Outlook event with data:', {
+    //   calendarId,
+    //   subject: requestBody.subject,
+    //   attendees: requestBody.attendees.length
+    // });
     // Para cuentas personales, usar endpoint directo de eventos
     let createUrl = 'https://graph.microsoft.com/v1.0/me/events';
 
@@ -422,11 +440,11 @@ export const createOutlookEvent = async (
       createUrl = `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`;
     }
 
-    console.log('Creating Outlook event:', {
-      url: createUrl,
-      subject: requestBody.subject,
-      attendees: requestBody.attendees.length
-    });
+    // console.log('Creating Outlook event:', {
+    //   url: createUrl,
+    //   subject: requestBody.subject,
+    //   attendees: requestBody.attendees.length
+    // });
 
     const response = await fetch(createUrl, {
       method: 'POST',

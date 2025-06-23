@@ -21,13 +21,29 @@ import { BadRequestException } from "../../../utils/app-error";
 
 export class ZoomMeetingProvider implements IMeetingProvider {
 
+private formatDateForZoom(date: Date, timezone: string): string {
+  // Zoom espera formato: YYYY-MM-DDTHH:mm:ss
+  // Y ajusta automáticamente basado en el timezone proporcionado
+  
+  // Opción A: Enviar como local time string (recomendado para Zoom)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+}
+
   /**
    * Crea un meeting en Zoom
    */
   async createMeeting(config: MeetingConfig, tokenConfig: TokenConfig): Promise<MeetingInfo> {
     console.log('🎥 [ZOOM] Creating meeting:', {
       topic: config.topic,
-      startTime: config.startTime,
+      // startTime: config.startTime,
+      startTime: this.formatDateForZoom(config.startTime, config.timezone),
       duration: Math.ceil((config.endTime.getTime() - config.startTime.getTime()) / (1000 * 60)),
       timezone: config.timezone
     });

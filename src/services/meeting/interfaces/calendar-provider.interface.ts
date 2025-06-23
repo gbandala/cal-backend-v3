@@ -13,7 +13,7 @@ export interface CalendarEvent {
   id: string;    
   title: string;    
   description?: string;   
-  startTime: Date;    
+  startTime: Date ;   
   endTime: Date;    
   timezone: string;    
   attendees: string[];  

@@ -17,9 +17,16 @@ import {
   deleteOutlookEvent
 } from "../../../outlook.service";
 import { BadRequestException } from "../../../../utils/app-error";
+import { time } from "console";
 
 export class OutlookCalendarProvider implements ICalendarProvider {
 
+// private convertUTCToTimezone(utcDate: Date): Date {
+//   const isoString = utcDate.toISOString();
+//   const localDate = new Date(isoString.slice(0, -1));
+//   return localDate; // Sigue siendo Date object
+// }
+  
   /**
    * Crea un evento en Outlook Calendar
    */
@@ -29,16 +36,19 @@ export class OutlookCalendarProvider implements ICalendarProvider {
     tokenConfig: TokenConfig
   ): Promise<string> {
     const validCalendarId = this.normalizeCalendarId(calendarId);
+    // event.startTime = this.convertUTCToTimezone(event.startTime);
+    // event.endTime = this.convertUTCToTimezone(event.endTime);
 
-    console.log('📅 [OUTLOOK_CALENDAR] Creating event:', {
-      calendarId,
-      validCalendarId,
-      title: event.title,
-      startTime: event.startTime,
-      endTime: event.endTime,
-      attendees: event.attendees.length
-    });
+    // console.log('📅 [OUTLOOK_CALENDAR] Creating event:', {
+    //   calendarId,
+    //   validCalendarId,
+    //   title: event.title,
+    //   startTime: this.convertUTCToTimezone(event.startTime),
+    //   endTime: this.convertUTCToTimezone(event.endTime),
+    //   attendees: event.attendees.length
+    // });
 
+    // console.log('-----------------------------------------------------------------');
     try {
       // 1. Validar y refrescar token
       const validToken = await this.validateAndRefreshToken(tokenConfig);
@@ -55,10 +65,7 @@ export class OutlookCalendarProvider implements ICalendarProvider {
         zoomJoinUrl: event.meetingUrl // URL del meeting si existe
       });
 
-      console.log('✅ [OUTLOOK_CALENDAR] Event created successfully:', {
-        eventId: outlookEvent.id,
-        calendarId: validCalendarId,
-      });
+      console.log('✅ [OUTLOOK_CALENDAR] Event created successfully:', outlookEvent);
 
       return outlookEvent.id;
 
@@ -226,11 +233,11 @@ export class OutlookCalendarProvider implements ICalendarProvider {
         content: this.buildEventDescription(event)
       },
       start: {
-        dateTime: event.startTime.toISOString(),
+        dateTime: event.startTime,
         timeZone: event.timezone
       },
       end: {
-        dateTime: event.endTime.toISOString(),
+        dateTime: event.endTime,
         timeZone: event.timezone
       },
       attendees: event.attendees.map(email => ({
