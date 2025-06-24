@@ -16,7 +16,7 @@ import integrationRoutes from "./routes/integration.routes";
 import meetingRoutes from "./routes/meeting.routes";
 import calendarRoutes from "./routes/calendar.routes"; 
 import userCalendarsRoutes from './routes/user-calendars.routes';
-import debugRoutes from "./routes/debug.routes";
+
 
 const app = express();
 const BASE_PATH = config.BASE_PATH;
@@ -47,7 +47,7 @@ app.use(`${BASE_PATH}/integration`, integrationRoutes);
 app.use(`${BASE_PATH}/meeting`, meetingRoutes);
 app.use(`${BASE_PATH}/calendars`, calendarRoutes);
 app.use(`${BASE_PATH}/user-calendars`, userCalendarsRoutes);
-app.use(`${BASE_PATH}/debug`, debugRoutes);
+
 
 app.use(errorHandler);
 

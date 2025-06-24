@@ -13,10 +13,11 @@ import { MeetingStrategyFactory } from "./meeting-strategy.factory";
 // Providers
 import { ZoomMeetingProvider } from "../../services/meeting/providers/zoom.provider";
 import { OutlookCalendarProvider } from "./providers/calendar/outlook-calendar.provider";
+import { GoogleCalendarProvider } from "./providers/calendar/google-calendar.provider";
 
 // Estrategias
 import { ZoomOutlookCalendarStrategy } from "./strategies/zoom-outlook-calendar.strategy";
-
+import { ZoomGoogleCalendarStrategy } from "./strategies/zoom-google-calendar.strategy";
 
 
 // ✅ EXPORTS PARA USO EN EXPRESS
@@ -28,9 +29,11 @@ export {
   // Providers
   ZoomMeetingProvider,
   OutlookCalendarProvider,
+  GoogleCalendarProvider, 
   
   // Estrategias
-  ZoomOutlookCalendarStrategy
+  ZoomOutlookCalendarStrategy,
+  ZoomGoogleCalendarStrategy
 };
 
 

@@ -21,10 +21,7 @@ import { BadRequestException } from "../../utils/app-error";
 
 // ✅ IMPORTS DE ESTRATEGIAS IMPLEMENTADAS
 import { ZoomOutlookCalendarStrategy } from "./strategies/zoom-outlook-calendar.strategy";
-// 🚀 IMPORTS DE ESTRATEGIAS FUTURAS (Fase 3)
-// import { GoogleMeetCalendarStrategy } from "./strategies/google-meet-calendar.strategy";
-// import { ZoomGoogleCalendarStrategy } from "./strategies/zoom-google-calendar.strategy";
-// import { TeamsOutlookCalendarStrategy } from "./strategies/teams-outlook-calendar.strategy";
+import { ZoomGoogleCalendarStrategy } from "./strategies/zoom-google-calendar.strategy"; // 🆕 AÑADIR
 
 /**
  * Factory principal para crear estrategias de meeting
@@ -34,10 +31,7 @@ export class MeetingStrategyFactory {
   constructor(
     // ✅ ESTRATEGIA IMPLEMENTADA
     private zoomOutlookCalendarStrategy: ZoomOutlookCalendarStrategy,
-    // 🚀 ESTRATEGIAS FUTURAS (Fase 3)
-    // private googleMeetCalendarStrategy: GoogleMeetCalendarStrategy,
-    // private zoomGoogleCalendarStrategy: ZoomGoogleCalendarStrategy,
-    // private teamsOutlookCalendarStrategy: TeamsOutlookCalendarStrategy
+    private zoomGoogleCalendarStrategy: ZoomGoogleCalendarStrategy, // 🆕 AÑADIR
   ) {}
 
   /**
@@ -78,8 +72,7 @@ export class MeetingStrategyFactory {
         throw new BadRequestException('GoogleMeetCalendarStrategy will be migrated in Fase 3');
       
       case MeetingCombination.ZOOM_GOOGLE_CALENDAR:
-        // return this.zoomGoogleCalendarStrategy;
-        throw new BadRequestException('ZoomGoogleCalendarStrategy will be migrated in Fase 3');
+        return this.zoomGoogleCalendarStrategy; 
       
       case MeetingCombination.ZOOM_OUTLOOK_CALENDAR:
         // ✅ IMPLEMENTADA - Esta ya funciona!
@@ -208,12 +201,5 @@ export class MeetingStrategyFactory {
     }
   }
 
-  // 🚀 TODO: Implementar en Fase 2
-  // private async checkUserIntegrations(
-  //   userId: string, 
-  //   requiredIntegrations: IntegrationAppTypeEnum[]
-  // ): Promise<string[]> {
-  //   // Verificar en BD qué integraciones tiene el usuario
-  //   // Retornar lista de integraciones faltantes
-  // }
+  
 }

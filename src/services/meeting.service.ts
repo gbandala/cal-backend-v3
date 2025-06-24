@@ -27,8 +27,10 @@ import { BadRequestException, NotFoundException } from "../utils/app-error";
 // ✅ NUEVOS IMPORTS: Sistema Strategy + Factory + Provider
 import { MeetingStrategyFactory } from "./meeting/meeting-strategy.factory";
 import { ZoomOutlookCalendarStrategy } from "./meeting/strategies/zoom-outlook-calendar.strategy";
+import { ZoomGoogleCalendarStrategy } from "./meeting/strategies/zoom-google-calendar.strategy";
 import { ZoomMeetingProvider } from "./meeting/providers/zoom.provider";
 import { OutlookCalendarProvider } from "./meeting/providers/calendar/outlook-calendar.provider";
+import { GoogleCalendarProvider } from "./meeting/providers/calendar/google-calendar.provider";
 
 // ✅ IMPORTS LEGACY: Mantenidos para compatibilidad con métodos no migrados
 import { validateGoogleToken, validateZoomToken } from "./integration.service";
@@ -52,20 +54,28 @@ let meetingStrategyFactory: MeetingStrategyFactory | null = null;
 function getMeetingStrategyFactory(): MeetingStrategyFactory {
   if (!meetingStrategyFactory) {
     console.log('🏭 [FACTORY] Initializing MeetingStrategyFactory...');
-    
+
     // Crear providers
     const zoomProvider = new ZoomMeetingProvider();
     const outlookProvider = new OutlookCalendarProvider();
-    
+    const googleProvider = new GoogleCalendarProvider();
+
     // Crear estrategias
     const zoomOutlookStrategy = new ZoomOutlookCalendarStrategy(zoomProvider, outlookProvider);
-    
+    const zoomGoogleStrategy = new ZoomGoogleCalendarStrategy(zoomProvider, googleProvider); 
+
     // Crear factory
-    meetingStrategyFactory = new MeetingStrategyFactory(zoomOutlookStrategy);
-    
+    // meetingStrategyFactory = new MeetingStrategyFactory(zoomOutlookStrategy);
+    // const zoomGoogleStrategy = new ZoomGoogleCalendarStrategy(zoomProvider, googleProvider);
+
+    meetingStrategyFactory = new MeetingStrategyFactory(
+      zoomOutlookStrategy,
+      zoomGoogleStrategy  
+    );
+
     console.log('✅ [FACTORY] MeetingStrategyFactory initialized successfully');
   }
-  
+
   return meetingStrategyFactory;
 }
 
@@ -156,7 +166,7 @@ export const createMeetBookingForGuestService = async (
 
     // PASO 2: Obtener factory y crear estrategia apropiada
     const factory = getMeetingStrategyFactory();
-    
+
     // Verificar si el tipo de ubicación está soportado por el nuevo sistema
     if (!factory.isCombinationSupported(event.locationType)) {
       console.log('⚠️ [MIGRATED] Location type not supported by new system, falling back to legacy:', event.locationType);
@@ -229,7 +239,7 @@ export const cancelMeetingService = async (meetingId: string) => {
 
     // PASO 3: Obtener factory y crear estrategia apropiada
     const factory = getMeetingStrategyFactory();
-    
+
     // Verificar si el tipo de ubicación está soportado por el nuevo sistema
     if (!factory.isCombinationSupported(meeting.event.locationType)) {
       console.log('⚠️ [MIGRATED] Location type not supported by new system, falling back to legacy:', meeting.event.locationType);
@@ -252,7 +262,7 @@ export const cancelMeetingService = async (meetingId: string) => {
     });
 
     // PASO 5: Retornar en formato compatible con API existente
-    return { 
+    return {
       success: result.success
     };
 
@@ -274,7 +284,7 @@ export const cancelMeetingService = async (meetingId: string) => {
  */
 async function getAndValidateEvent(eventId: string): Promise<Event> {
   const eventRepository = AppDataSource.getRepository(Event);
-  
+
   const event = await eventRepository.findOne({
     where: { id: eventId, isPrivate: false },
     relations: ["user"],
@@ -292,7 +302,7 @@ async function getAndValidateEvent(eventId: string): Promise<Event> {
  */
 async function getMeetingById(meetingId: string): Promise<Meeting> {
   const meetingRepository = AppDataSource.getRepository(Meeting);
-  
+
   const meeting = await meetingRepository.findOne({
     where: { id: meetingId },
     relations: ["event", "event.user"],
@@ -322,7 +332,7 @@ async function createMeetBookingForGuestServiceLegacy(
   timezone: string
 ) {
   console.log('🔄 [LEGACY] Using legacy implementation for unsupported location type');
-  
+
   // Extraer y convertir datos del DTO
   const { eventId, guestEmail, guestName, additionalInfo } = createMeetingDto;
   const startTime = new Date(createMeetingDto.startTime);
@@ -378,7 +388,7 @@ async function createMeetBookingForGuestServiceLegacy(
           app_type: IntegrationAppTypeEnum.ZOOM_MEETING,
         },
       });
-      
+
       calendarIntegration = await integrationRepository.findOne({
         where: {
           user: { id: event.user.id },
@@ -525,7 +535,7 @@ async function createMeetBookingForGuestServiceLegacy(
  */
 async function cancelMeetingServiceLegacy(meetingId: string) {
   console.log('🔄 [LEGACY] Using legacy implementation for meeting cancellation');
-  
+
   const meetingRepository = AppDataSource.getRepository(Meeting);
   const integrationRepository = AppDataSource.getRepository(Integration);
 

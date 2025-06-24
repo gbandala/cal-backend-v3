@@ -25,6 +25,7 @@ const appTypeToProviderMap: Record<
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationProviderEnum.MICROSOFT,
   [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationProviderEnum.MICROSOFT,
   [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: IntegrationProviderEnum.MICROSOFT,
+  [IntegrationAppTypeEnum.ZOOM_GOOGLE_CALENDAR]: IntegrationProviderEnum.GOOGLE, // Added missing property
 };
 
 /**
@@ -37,13 +38,12 @@ const appTypeToCategoryMap: Record<
   IntegrationAppTypeEnum,
   IntegrationCategoryEnum
 > = {
-  [IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR]:
-    IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING,
-  [IntegrationAppTypeEnum.ZOOM_MEETING]:
-    IntegrationCategoryEnum.VIDEO_CONFERENCING,
+  [IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR]:IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING,
+   [IntegrationAppTypeEnum.ZOOM_MEETING]: IntegrationCategoryEnum.VIDEO_CONFERENCING,
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: IntegrationCategoryEnum.CALENDAR,
   [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
   [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: IntegrationCategoryEnum.CALENDAR_AND_VIDEO_CONFERENCING, // ← NUEVO
+  [IntegrationAppTypeEnum.ZOOM_GOOGLE_CALENDAR]:IntegrationCategoryEnum.CALENDAR
 };
 
 /**
@@ -58,6 +58,7 @@ const appTypeToTitleMap: Record<IntegrationAppTypeEnum, string> = {
   [IntegrationAppTypeEnum.OUTLOOK_CALENDAR]: "Outlook Calendar",
   [IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM]: "Outlook + Zoom", // ← NUEVO
   [IntegrationAppTypeEnum.OUTLOOK_WITH_TEAMS]: "Outlook + Teams", // ← NUEVO
+  [IntegrationAppTypeEnum.ZOOM_GOOGLE_CALENDAR]:"Google Calendar + Zoom"
 };
 
 /**
