@@ -10,7 +10,8 @@ import {
   MeetingConfig, 
   MeetingInfo,   
 } from "../interfaces/meeting-provider.interface";
-import{TokenConfig} from "../../../services/meeting/interfaces/calendar-provider.interface";
+// import{TokenConfig} from "../../../services/meeting/interfaces/calendar-provider.interface";
+import { TokenConfig } from "../interfaces/calendar-provider.interface";
 import { validateZoomToken } from "../../integration.service";
 import { 
   deleteZoomMeetingWithValidation, 
@@ -42,7 +43,6 @@ private formatDateForZoom(date: Date, timezone: string): string {
   async createMeeting(config: MeetingConfig, tokenConfig: TokenConfig): Promise<MeetingInfo> {
     console.log('🎥 [ZOOM] Creating meeting:', {
       topic: config.topic,
-      // startTime: config.startTime,
       startTime: this.formatDateForZoom(config.startTime, config.timezone),
       duration: Math.ceil((config.endTime.getTime() - config.startTime.getTime()) / (1000 * 60)),
       timezone: config.timezone
@@ -121,7 +121,8 @@ private formatDateForZoom(date: Date, timezone: string): string {
   async deleteMeeting(
     meetingId: string | number, 
     tokenConfig: TokenConfig, 
-    userId?: string
+    userId?: string,
+    calendarId?: string 
   ): Promise<void> {
     console.log('🗑️ [ZOOM] Deleting meeting:', {
       meetingId,

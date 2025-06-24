@@ -20,9 +20,8 @@ export const zoomOAuth2Client = {
     'meeting:read:meeting', 
     'meeting:write:meeting', 
     'meeting:update:meeting', 
-    'meeting:delete:meeting',  // 👈 SCOPE CORRECTO para eliminar
+    'meeting:delete:meeting',  
     'zoomapp:inmeeting'
   ],
 };
 
-// user:read:user meeting:write:meeting meeting:read:meeting zoomapp:inmeeting

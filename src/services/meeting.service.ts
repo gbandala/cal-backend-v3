@@ -28,10 +28,11 @@ import { BadRequestException, NotFoundException } from "../utils/app-error";
 import { MeetingStrategyFactory } from "./meeting/meeting-strategy.factory";
 import { ZoomOutlookCalendarStrategy } from "./meeting/strategies/zoom-outlook-calendar.strategy";
 import { ZoomGoogleCalendarStrategy } from "./meeting/strategies/zoom-google-calendar.strategy";
+import { GoogleMeetCalendarStrategy } from "./meeting/strategies/google-meet-calendar.strategy";
 import { ZoomMeetingProvider } from "./meeting/providers/zoom.provider";
 import { OutlookCalendarProvider } from "./meeting/providers/calendar/outlook-calendar.provider";
 import { GoogleCalendarProvider } from "./meeting/providers/calendar/google-calendar.provider";
-
+import { GoogleMeetProvider } from "./meeting/providers/google-meet.provider";
 // ✅ IMPORTS LEGACY: Mantenidos para compatibilidad con métodos no migrados
 import { validateGoogleToken, validateZoomToken } from "./integration.service";
 import { googleOAuth2Client } from "../config/oauth.config";
@@ -59,10 +60,12 @@ function getMeetingStrategyFactory(): MeetingStrategyFactory {
     const zoomProvider = new ZoomMeetingProvider();
     const outlookProvider = new OutlookCalendarProvider();
     const googleProvider = new GoogleCalendarProvider();
+    const googleMeetProvider = new GoogleMeetProvider();
 
     // Crear estrategias
     const zoomOutlookStrategy = new ZoomOutlookCalendarStrategy(zoomProvider, outlookProvider);
-    const zoomGoogleStrategy = new ZoomGoogleCalendarStrategy(zoomProvider, googleProvider); 
+    const zoomGoogleStrategy = new ZoomGoogleCalendarStrategy(zoomProvider, googleProvider);
+    const googleMeetStrategy = new GoogleMeetCalendarStrategy(googleMeetProvider);
 
     // Crear factory
     // meetingStrategyFactory = new MeetingStrategyFactory(zoomOutlookStrategy);
@@ -70,7 +73,8 @@ function getMeetingStrategyFactory(): MeetingStrategyFactory {
 
     meetingStrategyFactory = new MeetingStrategyFactory(
       zoomOutlookStrategy,
-      zoomGoogleStrategy  
+      zoomGoogleStrategy,
+      googleMeetStrategy
     );
 
     console.log('✅ [FACTORY] MeetingStrategyFactory initialized successfully');

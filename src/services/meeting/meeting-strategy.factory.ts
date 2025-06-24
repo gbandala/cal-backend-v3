@@ -21,8 +21,8 @@ import { BadRequestException } from "../../utils/app-error";
 
 // ✅ IMPORTS DE ESTRATEGIAS IMPLEMENTADAS
 import { ZoomOutlookCalendarStrategy } from "./strategies/zoom-outlook-calendar.strategy";
-import { ZoomGoogleCalendarStrategy } from "./strategies/zoom-google-calendar.strategy"; // 🆕 AÑADIR
-
+import { ZoomGoogleCalendarStrategy } from "./strategies/zoom-google-calendar.strategy"; 
+import { GoogleMeetCalendarStrategy } from "./strategies/google-meet-calendar.strategy";
 /**
  * Factory principal para crear estrategias de meeting
  */
@@ -31,7 +31,8 @@ export class MeetingStrategyFactory {
   constructor(
     // ✅ ESTRATEGIA IMPLEMENTADA
     private zoomOutlookCalendarStrategy: ZoomOutlookCalendarStrategy,
-    private zoomGoogleCalendarStrategy: ZoomGoogleCalendarStrategy, // 🆕 AÑADIR
+    private zoomGoogleCalendarStrategy: ZoomGoogleCalendarStrategy, 
+    private googleMeetCalendarStrategy: GoogleMeetCalendarStrategy,
   ) {}
 
   /**
@@ -68,14 +69,12 @@ export class MeetingStrategyFactory {
     
     switch (combination) {
       case MeetingCombination.GOOGLE_MEET_CALENDAR:
-        // return this.googleMeetCalendarStrategy;
-        throw new BadRequestException('GoogleMeetCalendarStrategy will be migrated in Fase 3');
-      
+        return this.googleMeetCalendarStrategy;
+        
       case MeetingCombination.ZOOM_GOOGLE_CALENDAR:
         return this.zoomGoogleCalendarStrategy; 
       
       case MeetingCombination.ZOOM_OUTLOOK_CALENDAR:
-        // ✅ IMPLEMENTADA - Esta ya funciona!
         return this.zoomOutlookCalendarStrategy;
       
       case MeetingCombination.TEAMS_OUTLOOK_CALENDAR:
