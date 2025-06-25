@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.middeware";
 import { HTTPSTATUS } from "../config/http.config";
 import {
-  
   checkIntegrationService,
   connectAppService,
   createIntegrationService,
@@ -19,11 +18,13 @@ import {
 import { IntegrationAppTypeEnum, IntegrationProviderEnum, IntegrationCategoryEnum } from "../enums/integration.enum";
 import { zoomOAuth2Client } from "../config/oauth.config";
 import { getMicrosoftUserInfo, getOutlookCalendars } from "../services/outlook.service";
-import { syncOutlookCalendarsService, createDefaultCalendarForUser } from "../services/user-calendars.service";
+// import { syncOutlookCalendarsService, createDefaultCalendarForUser } from "../services/user-calendars.service";
+import { CalendarService } from "../services/calendar.service";
 import { UserCalendar } from "../database/entities/user-calendar.entity"; 
 import { AppDataSource } from "../config/database.config";
 
 const CLIENT_APP_URL = config.FRONTEND_INTEGRATION_URL;
+const calendarService = new CalendarService();
 
 export const getUserIntegrationsController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -199,12 +200,6 @@ export const zoomOAuthCallbackController = asyncHandler(
   }
 );
 
-
-
-/**
- * Microsoft Callback - VERSIÓN COMPLETA CON USER CALENDARS
- * Replica el comportamiento de Google Calendar + Zoom
- */
 export const microsoftCallbackController = async (req: Request, res: Response) => {
   try {
     const { code, state, error } = req.query;
@@ -285,7 +280,8 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
     };
 
     try {
-      const syncedCalendars = await syncOutlookCalendarsService(userId, tokens.access_token);
+      // const syncedCalendars = await syncOutlookCalendarsService(userId, tokens.access_token);
+      const syncedCalendars = await calendarService.syncOutlookCalendarsService(userId, tokens.access_token);
       userCalendarsResult = {
         success: true,
         calendars: syncedCalendars,
@@ -294,7 +290,8 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
       };
       console.log('✅ Step 3 Complete - Calendars synced successfully:', {
         calendarsCount: syncedCalendars.length,
-        primaryCalendar: syncedCalendars.find(cal => cal.isPrimary)?.calendarName
+        // primaryCalendar: syncedCalendars.find(cal => cal.isPrimary)?.calendarName
+        primaryCalendar: syncedCalendars.find((cal: any) => cal.isPrimary)?.calendarName
       });
     } catch (syncError) {
       const errorMessage = syncError instanceof Error ? syncError.message : String(syncError);
@@ -365,7 +362,8 @@ export const microsoftCallbackController = async (req: Request, res: Response) =
       console.log('🔄 Step 6: Creating fallback calendar in user_calendars...');
       
       try {
-        const fallbackCalendar = await createDefaultCalendarForUser(
+        // const fallbackCalendar = await createDefaultCalendarForUser(
+        const fallbackCalendar = await calendarService.createDefaultCalendarForUser(
           userId,
           defaultCalendar.id,
           defaultCalendar.name

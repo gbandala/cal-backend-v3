@@ -2,18 +2,14 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/asyncHandler.middeware";
 import { HTTPSTATUS } from "../config/http.config";
-import {
-  getUserCalendarsService,
-  syncOutlookCalendarsService,
-  getPrimaryUserCalendarService,
-  getCalendarStatsService
-} from "../services/user-calendars.service";
-import { getValidMicrosoftToken, getMicrosoftIntegration } from "../services/token.service";
+import { CalendarService } from "../services/calendar.service";
+import { getValidMicrosoftToken, getMicrosoftIntegration } from "../services/integration.service";
 import { 
   checkIntegrationService
 } from "../services/integration.service";
-// import { IntegrationAppTypeEnum } from "../database/entities/integration.entity";
 import { IntegrationAppTypeEnum } from "../enums/integration.enum";
+
+const calendarService = new CalendarService();
 
 /**
  * CONTROLLER PARA GESTIÓN DE CALENDARIOS DE USUARIO
@@ -33,7 +29,7 @@ export const getUserCalendarsController = asyncHandler(
     console.log('📅 Getting calendars for user:', userId);
 
     try {
-      const calendars = await getUserCalendarsService(userId);
+       const calendars = await calendarService.getUserCalendarsListService(userId)
 
       return res.status(HTTPSTATUS.OK).json({
         message: "User calendars retrieved successfully",
@@ -75,7 +71,7 @@ export const getPrimaryCalendarController = asyncHandler(
     console.log('🎯 Getting primary calendar for user:', userId);
 
     try {
-      const primaryCalendar = await getPrimaryUserCalendarService(userId);
+      const primaryCalendar = await calendarService.getPrimaryUserCalendarService(userId);
 
       if (!primaryCalendar) {
         return res.status(HTTPSTATUS.NOT_FOUND).json({
@@ -142,7 +138,7 @@ export const syncOutlookCalendarsController = asyncHandler(
       const validToken = await getValidMicrosoftToken(userId);
 
       // 3. Sincronizar calendarios
-      const syncedCalendars = await syncOutlookCalendarsService(userId, validToken);
+      const syncedCalendars = await calendarService.syncOutlookCalendarsService(userId, validToken)
 
       console.log('✅ Outlook calendar sync completed:', {
         userId,
@@ -203,7 +199,7 @@ export const getCalendarStatsController = asyncHandler(
     console.log('📊 Getting calendar stats for user:', userId);
 
     try {
-      const stats = await getCalendarStatsService(userId);
+      const stats = await calendarService.getCalendarStatsService(userId);
 
       // Obtener también información de integración para stats completas
       const microsoftIntegration = await getMicrosoftIntegration(userId);
@@ -265,7 +261,7 @@ export const forceResyncCalendarsController = asyncHandler(
       const validToken = await getValidMicrosoftToken(userId);
 
       // Sincronizar calendarios
-      const syncedCalendars = await syncOutlookCalendarsService(userId, validToken);
+      const syncedCalendars = await calendarService.syncOutlookCalendarsService(userId, validToken)
 
       console.log('✅ Force resync completed:', {
         userId,
@@ -310,7 +306,7 @@ export const calendarHealthController = asyncHandler(
     const userId = req.user?.id as string;
 
     try {
-      const calendars = await getUserCalendarsService(userId);
+      const calendars = await calendarService.getUserCalendarsListService(userId)
       const microsoftIntegration = await getMicrosoftIntegration(userId);
       
       const health = {
