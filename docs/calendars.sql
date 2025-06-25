@@ -1,3 +1,16 @@
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 
 CREATE TYPE public.day_availability_day_enum AS ENUM (
     'SUNDAY',
@@ -9,18 +22,16 @@ CREATE TYPE public.day_availability_day_enum AS ENUM (
     'SATURDAY'
 );
 
-
 ALTER TYPE public.day_availability_day_enum OWNER TO cal_app_user;
-
 
 CREATE TYPE public.events_locationtype_enum AS ENUM (
     'GOOGLE_MEET_AND_CALENDAR',
-    'ZOOM_MEETING',
-    'OUTLOOK_WITH_ZOOM'
+    'OUTLOOK_WITH_ZOOM',
+    'GOOGLE_WITH_ZOOM',
+    'OUTLOOK_WITH_TEAMS'
 );
 
-
-ALTER TYPE public.events_locationtype_enum OWNER TO cal_app_user;
+ALTER TYPE public.events_locationtype_enum OWNER TO postgres;
 
 CREATE TYPE public.integrations_app_type_enum AS ENUM (
     'GOOGLE_MEET_AND_CALENDAR',
@@ -28,7 +39,6 @@ CREATE TYPE public.integrations_app_type_enum AS ENUM (
     'OUTLOOK_CALENDAR',
     'ZOOM_GOOGLE_CALENDAR'
 );
-
 
 ALTER TYPE public.integrations_app_type_enum OWNER TO cal_app_user;
 
@@ -38,7 +48,6 @@ CREATE TYPE public.integrations_category_enum AS ENUM (
     'CALENDAR'
 );
 
-
 ALTER TYPE public.integrations_category_enum OWNER TO cal_app_user;
 
 CREATE TYPE public.integrations_provider_enum AS ENUM (
@@ -47,14 +56,12 @@ CREATE TYPE public.integrations_provider_enum AS ENUM (
     'MICROSOFT'
 );
 
-
 ALTER TYPE public.integrations_provider_enum OWNER TO cal_app_user;
 
 CREATE TYPE public.meetings_status_enum AS ENUM (
     'SCHEDULED',
     'CANCELLED'
 );
-
 
 ALTER TYPE public.meetings_status_enum OWNER TO cal_app_user;
 
@@ -69,7 +76,6 @@ CREATE TABLE public.availability (
     "updatedAt" timestamp without time zone DEFAULT now() NOT NULL
 );
 
-
 ALTER TABLE public.availability OWNER TO cal_app_user;
 
 CREATE TABLE public.day_availability (
@@ -82,7 +88,6 @@ CREATE TABLE public.day_availability (
     "updatedAt" timestamp without time zone DEFAULT now() NOT NULL,
     "availabilityId" uuid
 );
-
 
 ALTER TABLE public.day_availability OWNER TO cal_app_user;
 
@@ -101,12 +106,7 @@ CREATE TABLE public.events (
     "userId" uuid
 );
 
-
 ALTER TABLE public.events OWNER TO cal_app_user;
-
-COMMENT ON COLUMN public.events.calendar_id IS 'ID del calendario de Google (solo para Google Meet/Calendar). NULL para Zoom.';
-
-COMMENT ON COLUMN public.events.calendar_name IS 'Nombre del calendario (solo para Google Meet/Calendar). NULL para Zoom.';
 
 CREATE TABLE public.integrations (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
@@ -130,16 +130,7 @@ CREATE TABLE public.integrations (
     CONSTRAINT "CHK_integrations_provider_logic" CHECK ((((provider = 'GOOGLE'::public.integrations_provider_enum) AND (calendar_id IS NOT NULL) AND (zoom_user_id IS NULL) AND (outlook_calendar_id IS NULL)) OR ((provider = 'ZOOM'::public.integrations_provider_enum) AND (calendar_id IS NULL) AND (zoom_user_id IS NOT NULL) AND (outlook_calendar_id IS NULL)) OR ((provider = 'MICROSOFT'::public.integrations_provider_enum) AND (calendar_id IS NULL) AND (zoom_user_id IS NULL) AND (outlook_calendar_id IS NOT NULL))))
 );
 
-
 ALTER TABLE public.integrations OWNER TO cal_app_user;
-
-COMMENT ON COLUMN public.integrations.calendar_id IS 'Calendario por defecto (solo Google). NULL para otros proveedores.';
-
-COMMENT ON COLUMN public.integrations.calendar_name IS 'Nombre del calendario por defecto';
-
-COMMENT ON COLUMN public.integrations.zoom_user_id IS 'ID de usuario en Zoom (solo para integraciones Zoom)';
-
-COMMENT ON COLUMN public.integrations.zoom_account_id IS 'ID de cuenta Zoom (para integraciones empresariales)';
 
 CREATE TABLE public.meetings (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
@@ -163,16 +154,7 @@ CREATE TABLE public.meetings (
     CONSTRAINT "CHK_meetings_platform_logic" CHECK ((((("calendarAppType")::text = 'GOOGLE_MEET_AND_CALENDAR'::text) AND (calendar_id IS NOT NULL) AND (zoom_meeting_id IS NULL)) OR ((("calendarAppType")::text = 'ZOOM_MEETING'::text) AND (calendar_id IS NULL) AND (zoom_meeting_id IS NOT NULL)) OR ((("calendarAppType")::text = 'ZOOM_GOOGLE_CALENDAR'::text) AND (calendar_id IS NOT NULL) AND (zoom_meeting_id IS NOT NULL)) OR ((("calendarAppType")::text = 'OUTLOOK_WITH_ZOOM'::text) AND (calendar_id IS NOT NULL) AND (zoom_meeting_id IS NOT NULL))))
 );
 
-
 ALTER TABLE public.meetings OWNER TO cal_app_user;
-
-COMMENT ON COLUMN public.meetings.calendar_id IS 'ID del calendario Google (solo para Google Meet). NULL para Zoom.';
-
-COMMENT ON COLUMN public.meetings.zoom_meeting_id IS 'ID numérico del meeting de Zoom (solo para Zoom). NULL para Google.';
-
-COMMENT ON COLUMN public.meetings.zoom_join_url IS 'URL para que invitados se unan al meeting de Zoom';
-
-COMMENT ON COLUMN public.meetings.zoom_start_url IS 'URL para que el host inicie el meeting de Zoom';
 
 CREATE TABLE public.user_calendars (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
@@ -188,10 +170,7 @@ CREATE TABLE public.user_calendars (
     "updatedAt" timestamp without time zone DEFAULT now() NOT NULL
 );
 
-
 ALTER TABLE public.user_calendars OWNER TO cal_app_user;
-
-COMMENT ON TABLE public.user_calendars IS 'Cache de calendarios disponibles por usuario para mejorar performance';
 
 CREATE TABLE public.users (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
@@ -214,14 +193,11 @@ ALTER TABLE ONLY public.availability
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT "PK_40731c7151fe4be3116e45ddf73" PRIMARY KEY (id);
 
-
 ALTER TABLE ONLY public.integrations
     ADD CONSTRAINT "PK_9adcdc6d6f3922535361ce641e8" PRIMARY KEY (id);
 
-
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY (id);
-
 
 ALTER TABLE ONLY public.meetings
     ADD CONSTRAINT "PK_aa73be861afa77eb4ed31f3ed57" PRIMARY KEY (id);
@@ -302,14 +278,5 @@ ALTER TABLE ONLY public.events
 ALTER TABLE ONLY public.integrations
     ADD CONSTRAINT "FK_c32758a01d05d0d1da56fa46ae1" FOREIGN KEY ("userId") REFERENCES public.users(id);
 
-
 ALTER TABLE ONLY public.user_calendars
     ADD CONSTRAINT "FK_user_calendars_user" FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
--- Completed on 2025-06-24 08:05:26
-
---
--- PostgreSQL database dump complete
---
-
