@@ -17,17 +17,24 @@ import { BadRequestException } from "../../../utils/app-error";
  * @returns La combinación correspondiente
  * @throws BadRequestException si el tipo no está soportado
  */
-export function mapLocationTypeToCombination(locationType: EventLocationEnumType): MeetingCombination {
+// export function mapLocationTypeToCombination(locationType: EventLocationEnumType): MeetingCombination {
+//   const mapping: Record<EventLocationEnumType, MeetingCombination> = {
+//     [EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR]: MeetingCombination.GOOGLE_MEET_CALENDAR,
+//     [EventLocationEnumType.ZOOM_MEETING]: MeetingCombination.ZOOM_GOOGLE_CALENDAR,
+//     [EventLocationEnumType.OUTLOOK_WITH_ZOOM]: MeetingCombination.ZOOM_OUTLOOK_CALENDAR,
+//     // 🚀 FUTURAS COMBINACIONES
+//     [EventLocationEnumType.OUTLOOK_WITH_TEAMS]: MeetingCombination.TEAMS_OUTLOOK_CALENDAR,
+//     // [EventLocationEnumType.GOOGLE_WITH_TEAMS]: MeetingCombination.TEAMS_GOOGLE_CALENDAR, // Si se añade
+//     // [EventLocationEnumType.OUTLOOK_WITH_GOOGLE_MEET]: MeetingCombination.GOOGLE_MEET_OUTLOOK_CALENDAR, // Si se añade
+//   };
+
+  export function mapLocationTypeToCombination(locationType: EventLocationEnumType): MeetingCombination {
   const mapping: Record<EventLocationEnumType, MeetingCombination> = {
     [EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR]: MeetingCombination.GOOGLE_MEET_CALENDAR,
-    [EventLocationEnumType.ZOOM_MEETING]: MeetingCombination.ZOOM_GOOGLE_CALENDAR,
-    [EventLocationEnumType.OUTLOOK_WITH_ZOOM]: MeetingCombination.ZOOM_OUTLOOK_CALENDAR,
-    // 🚀 FUTURAS COMBINACIONES
+    [EventLocationEnumType.GOOGLE_WITH_ZOOM]: MeetingCombination.ZOOM_GOOGLE_CALENDAR,     // ✅ Explícito
+    [EventLocationEnumType.OUTLOOK_WITH_ZOOM]: MeetingCombination.ZOOM_OUTLOOK_CALENDAR,   // ✅ Explícito
     [EventLocationEnumType.OUTLOOK_WITH_TEAMS]: MeetingCombination.TEAMS_OUTLOOK_CALENDAR,
-    // [EventLocationEnumType.GOOGLE_WITH_TEAMS]: MeetingCombination.TEAMS_GOOGLE_CALENDAR, // Si se añade
-    // [EventLocationEnumType.OUTLOOK_WITH_GOOGLE_MEET]: MeetingCombination.GOOGLE_MEET_OUTLOOK_CALENDAR, // Si se añade
   };
-
   const combination = mapping[locationType];
   
   if (!combination) {
@@ -47,27 +54,27 @@ export function mapLocationTypeToCombination(locationType: EventLocationEnumType
  * @returns El EventLocationEnumType correspondiente
  * @throws BadRequestException si la combinación no está mapeada
  */
-export function mapCombinationToLocationType(combination: MeetingCombination): EventLocationEnumType {
-  const reverseMapping: Record<MeetingCombination, EventLocationEnumType> = {
-    [MeetingCombination.GOOGLE_MEET_CALENDAR]: EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR,
-    [MeetingCombination.ZOOM_GOOGLE_CALENDAR]: EventLocationEnumType.ZOOM_MEETING,
-    [MeetingCombination.ZOOM_OUTLOOK_CALENDAR]: EventLocationEnumType.OUTLOOK_WITH_ZOOM,
-    [MeetingCombination.TEAMS_OUTLOOK_CALENDAR]: EventLocationEnumType.OUTLOOK_WITH_TEAMS,
-    // Combinaciones futuras que podrían no tener LocationType equivalente
-    [MeetingCombination.TEAMS_GOOGLE_CALENDAR]: EventLocationEnumType.ZOOM_MEETING, // Placeholder
-    [MeetingCombination.GOOGLE_MEET_OUTLOOK_CALENDAR]: EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR, // Placeholder
-  };
+// export function mapCombinationToLocationType(combination: MeetingCombination): EventLocationEnumType {
+//   const reverseMapping: Record<MeetingCombination, EventLocationEnumType> = {
+//     [MeetingCombination.GOOGLE_MEET_CALENDAR]: EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR,
+//     [MeetingCombination.ZOOM_GOOGLE_CALENDAR]: EventLocationEnumType.GOOGLE_WITH_ZOOM,
+//     [MeetingCombination.ZOOM_OUTLOOK_CALENDAR]: EventLocationEnumType.OUTLOOK_WITH_ZOOM,
+//     [MeetingCombination.TEAMS_OUTLOOK_CALENDAR]: EventLocationEnumType.OUTLOOK_WITH_TEAMS,
+//     // Combinaciones futuras que podrían no tener LocationType equivalente
+//     // [MeetingCombination.TEAMS_GOOGLE_CALENDAR]: EventLocationEnumType.ZOOM_MEETING, // Placeholder
+//     [MeetingCombination.GOOGLE_MEET_OUTLOOK_CALENDAR]: EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR, // Placeholder
+//   };
 
-  const locationType = reverseMapping[combination];
+//   const locationType = reverseMapping[combination];
   
-  if (!locationType) {
-    throw new BadRequestException(
-      `No location type mapping for combination: ${combination}`
-    );
-  }
+//   if (!locationType) {
+//     throw new BadRequestException(
+//       `No location type mapping for combination: ${combination}`
+//     );
+//   }
 
-  return locationType;
-}
+//   return locationType;
+// }
 
 /**
  * Valida si un EventLocationEnumType está soportado y implementado

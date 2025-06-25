@@ -364,7 +364,7 @@ async function createMeetBookingForGuestServiceLegacy(
 
   let effectiveCalendarId = event.calendar_id;
 
-  if (!effectiveCalendarId && event.locationType === EventLocationEnumType.ZOOM_MEETING) {
+  if (!effectiveCalendarId && event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM) {
     console.log("Zoom event without calendar_id, will use integration calendar_id");
   } else if (!effectiveCalendarId) {
     throw new BadRequestException("Event does not have a calendar configured");
@@ -385,7 +385,7 @@ async function createMeetBookingForGuestServiceLegacy(
       calendarIntegration = meetIntegration;
       break;
 
-    case EventLocationEnumType.ZOOM_MEETING:
+    case EventLocationEnumType.GOOGLE_WITH_ZOOM:
       meetIntegration = await integrationRepository.findOne({
         where: {
           user: { id: event.user.id },
@@ -427,7 +427,7 @@ async function createMeetBookingForGuestServiceLegacy(
   );
 
   // RESOLVER CALENDAR_ID EFECTIVO
-  if (!effectiveCalendarId && event.locationType === EventLocationEnumType.ZOOM_MEETING) {
+  if (!effectiveCalendarId && event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM) {
     if (!calendarIntegration.calendar_id) {
       throw new BadRequestException("No calendar configured in Google Calendar integration. Please configure a default calendar.");
     }
@@ -463,7 +463,7 @@ async function createMeetBookingForGuestServiceLegacy(
     calendarEventId = calendarResult.calendarEventId;
     calendarAppType = IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR;
 
-  } else if (event.locationType === EventLocationEnumType.ZOOM_MEETING) {
+  } else if (event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM) {
     // Crear meeting de Zoom
     const { meetingData } = await createZoomMeeting(
       meetIntegration.access_token,
@@ -519,7 +519,7 @@ async function createMeetBookingForGuestServiceLegacy(
     ...(event.locationType === EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR && {
       calendar_id: effectiveCalendarId,
     }),
-    ...(event.locationType === EventLocationEnumType.ZOOM_MEETING && {
+    ...(event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM && {
       zoom_meeting_id: zoomMeetingId,
       zoom_join_url: zoomJoinUrl,
       zoom_start_url: zoomStartUrl,
@@ -566,7 +566,7 @@ async function cancelMeetingServiceLegacy(meetingId: string) {
         },
       });
 
-    } else if (meeting.event.locationType === EventLocationEnumType.ZOOM_MEETING) {
+    } else if (meeting.event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM) {
       zoomIntegration = await integrationRepository.findOne({
         where: {
           user: { id: meeting.event.user.id },
@@ -610,7 +610,7 @@ async function cancelMeetingServiceLegacy(meetingId: string) {
         calendarType
       );
 
-    } else if (meeting.event.locationType === EventLocationEnumType.ZOOM_MEETING) {
+    } else if (meeting.event.locationType === EventLocationEnumType.GOOGLE_WITH_ZOOM) {
       if (!zoomIntegration) {
         throw new BadRequestException("No Zoom integration found for this user");
       }
