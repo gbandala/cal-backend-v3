@@ -2,6 +2,7 @@ import { BadRequestException } from "../utils/app-error";
 import { validateGoogleToken } from "./integration.service";
 import { googleOAuth2Client } from "../config/oauth.config";
 import { google } from "googleapis";
+import { CalendarEvent, CalendarEventsQuery, CalendarEventsResult } from "../@types/calendar-event.type";
 
 /**
  * SERVICIO DE GOOGLE CALENDAR
@@ -384,3 +385,243 @@ export const normalizeGoogleCalendarId = (calendarId: string): string => {
 
   return calendarId;
 };
+
+/**
+ * NUEVA FUNCIÓN: Obtiene eventos de un calendario de Google para una fecha específica
+ * 
+ * @param accessToken - Token de acceso válido de Google
+ * @param calendarId - ID del calendario ('primary' o ID específico)
+ * @param date - Fecha en formato YYYY-MM-DD
+ * @param timezone - Zona horaria para la consulta (ej: 'America/Mexico_City')
+ * @returns Array de eventos del calendario
+ */
+export const getGoogleCalendarEvents = async (
+  accessToken: string,
+  calendarId: string,
+  date: string,
+  timezone: string = 'UTC'
+): Promise<CalendarEvent[]> => {
+  console.log('📅 [GOOGLE_SERVICE] Getting calendar events:', {
+    calendarId,
+    date,
+    timezone
+  });
+
+  try {
+    // Configurar cliente OAuth
+    googleOAuth2Client.setCredentials({ access_token: accessToken });
+
+    const calendar = google.calendar({
+      version: "v3",
+      auth: googleOAuth2Client,
+    });
+
+    // Calcular timeMin y timeMax para el día específico en la zona horaria dada
+    const dayStart = new Date(`${date}T00:00:00`);
+    const dayEnd = new Date(`${date}T23:59:59`);
+    
+    // Convertir a UTC para la API de Google Calendar
+    const timeMin = dayStart.toISOString();
+    const timeMax = dayEnd.toISOString();
+
+    console.log('🔍 [GOOGLE_SERVICE] Query parameters:', {
+      calendarId,
+      timeMin,
+      timeMax,
+      timezone
+    });
+
+    // Obtener eventos del calendario
+    const response = await calendar.events.list({
+      calendarId: normalizeGoogleCalendarId(calendarId),
+      timeMin: timeMin,
+      timeMax: timeMax,
+      singleEvents: true, // Expandir eventos recurrentes
+      orderBy: 'startTime',
+      maxResults: 250, // Límite razonable para un día
+      timeZone: timezone, // Zona horaria de referencia
+    });
+
+    if (!response.data.items) {
+      console.log('📅 [GOOGLE_SERVICE] No events found for date:', date);
+      return [];
+    }
+
+    // Convertir eventos de Google a formato estándar
+    const events: CalendarEvent[] = response.data.items
+      .filter(item => {
+        // Filtrar eventos válidos
+        return item.status !== 'cancelled' && 
+               (item.start?.dateTime || item.start?.date) &&
+               (item.end?.dateTime || item.end?.date);
+      })
+      .map(item => {
+        const isAllDay = !item.start?.dateTime; // Si no tiene hora específica, es todo el día
+        
+        // Manejo de fechas: dateTime para eventos con hora, date para eventos de todo el día
+        const startTime = isAllDay 
+          ? new Date(`${item.start?.date}T00:00:00.000Z`)
+          : new Date(item.start?.dateTime!);
+          
+        const endTime = isAllDay 
+          ? new Date(`${item.end?.date}T23:59:59.999Z`)
+          : new Date(item.end?.dateTime!);
+
+        const event: CalendarEvent = {
+          id: item.id!,
+          title: item.summary || 'Evento sin título',
+          startTime,
+          endTime,
+          isAllDay,
+          status: item.status === 'confirmed' ? 'confirmed' : 
+                  item.status === 'cancelled' ? 'cancelled' : 'tentative',
+          organizer: item.organizer ? {
+            email: item.organizer.email!,
+            name: item.organizer.displayName || undefined
+          } : undefined,
+          attendees: item.attendees?.map(attendee => ({
+            email: attendee.email!,
+            name: attendee.displayName || undefined,
+            responseStatus: attendee.responseStatus as any
+          })),
+          description: item.description || undefined,
+          location: item.location || undefined,
+          isRecurring: !!item.recurringEventId,
+          timeZone: timezone,
+          providerData: {
+            provider: 'google',
+            originalEvent: item
+          }
+        };
+
+        return event;
+      });
+
+    console.log('✅ [GOOGLE_SERVICE] Events retrieved successfully:', {
+      calendarId,
+      date,
+      eventsCount: events.length,
+      allDayEvents: events.filter(e => e.isAllDay).length,
+      timedEvents: events.filter(e => !e.isAllDay).length
+    });
+    console.log('---------------------------------------------------------------');
+    // Log de eventos para debugging
+    events.forEach(event => {
+      console.log(`   📝 Event: "${event.title}" (${event.startTime.toISOString()} - ${event.endTime.toISOString()}) [AllDay: ${event.isAllDay}]`);
+    });
+     console.log('---------------------------------------------------------------');
+
+    return events;
+
+  } catch (error) {
+    console.error('❌ [GOOGLE_SERVICE] Error getting calendar events:', {
+      error: error instanceof Error ? error.message : String(error),
+      calendarId,
+      date,
+      timezone
+    });
+
+    // Para eventos del calendario, es mejor fallar silenciosamente que interrumpir el flujo
+    // El sistema puede continuar funcionando solo con meetings + availability
+    console.warn('⚠️ [GOOGLE_SERVICE] Continuing without calendar events due to error');
+    return [];
+  }
+};
+
+/**
+ * FUNCIÓN ALTERNATIVA: Obtiene eventos usando la nueva interfaz más robusta
+ * 
+ * @param accessToken - Token de acceso válido de Google
+ * @param query - Parámetros de consulta estructurados
+ * @returns Resultado detallado de la consulta
+ */
+export const getGoogleCalendarEventsAdvanced = async (
+  accessToken: string,
+  query: CalendarEventsQuery
+): Promise<CalendarEventsResult> => {
+  console.log('📅 [GOOGLE_SERVICE] Getting calendar events (advanced):', query);
+
+  const result: CalendarEventsResult = {
+    events: [],
+    totalCount: 0,
+    provider: 'google',
+    calendarId: query.calendarId,
+    date: query.date,
+    hasErrors: false,
+    errors: []
+  };
+
+  try {
+    const events = await getGoogleCalendarEvents(
+      accessToken,
+      query.calendarId,
+      query.date,
+      query.timezone
+    );
+
+    // Aplicar filtros adicionales si se especifican
+    let filteredEvents = events;
+
+    if (!query.includeAllDay) {
+      filteredEvents = filteredEvents.filter(event => !event.isAllDay);
+    }
+
+    if (!query.includeCancelled) {
+      filteredEvents = filteredEvents.filter(event => event.status !== 'cancelled');
+    }
+
+    if (query.maxResults) {
+      filteredEvents = filteredEvents.slice(0, query.maxResults);
+    }
+
+    result.events = filteredEvents;
+    result.totalCount = events.length;
+
+    console.log('✅ [GOOGLE_SERVICE] Advanced query completed:', {
+      originalEvents: events.length,
+      filteredEvents: filteredEvents.length,
+      appliedFilters: {
+        includeAllDay: query.includeAllDay,
+        includeCancelled: query.includeCancelled,
+        maxResults: query.maxResults
+      }
+    });
+
+    return result;
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    result.hasErrors = true;
+    result.errors = [errorMessage];
+
+    console.error('❌ [GOOGLE_SERVICE] Advanced query failed:', {
+      error: errorMessage,
+      query
+    });
+
+    return result;
+  }
+};
+
+// FUNCIÓN HELPER NUEVA: Agregar esta función al final del archivo
+/**
+ * FUNCIÓN HELPER: Mapea estados de respuesta de Google Calendar a formato estándar
+ * 
+ * @param googleStatus - Estado de respuesta de Google Calendar
+ * @returns Estado en formato estándar
+ */
+function mapGoogleResponseStatus(googleStatus?: string): 'accepted' | 'declined' | 'tentative' | 'needsAction' {
+  switch (googleStatus) {
+    case 'accepted':
+      return 'accepted';
+    case 'declined':
+      return 'declined';
+    case 'tentative':
+      return 'tentative';
+    case 'needsAction':
+      return 'needsAction';
+    default:
+      return 'needsAction'; // Default para valores undefined o desconocidos
+  }
+}

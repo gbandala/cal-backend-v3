@@ -1,4 +1,6 @@
 import { BadRequestException } from "../utils/app-error";
+import { CalendarEvent, CalendarEventsQuery, CalendarEventsResult } from "../@types/calendar-event.type";
+
 
 /**
  * SERVICIO DE OUTLOOK/MICROSOFT GRAPH CONSOLIDADO
@@ -479,4 +481,273 @@ export const getMicrosoftUserInfo = async (accessToken: string) => {
     console.error('❌ Error fetching Microsoft user info:', error);
     throw new BadRequestException('Failed to fetch user info');
   }
+};
+
+/**
+ * NUEVA FUNCIÓN: Obtiene eventos de un calendario de Outlook para una fecha específica
+ * 
+ * @param accessToken - Token de acceso válido de Microsoft
+ * @param calendarId - ID del calendario ('primary' o ID específico)
+ * @param date - Fecha en formato YYYY-MM-DD
+ * @param timezone - Zona horaria para la consulta (ej: 'America/Mexico_City')
+ * @returns Array de eventos del calendario
+ */
+export const getOutlookCalendarEvents = async (
+  accessToken: string,
+  calendarId: string,
+  date: string,
+  timezone: string = 'UTC'
+): Promise<CalendarEvent[]> => {
+  console.log('📅 [OUTLOOK_SERVICE] Getting calendar events:', {
+    calendarId,
+    date,
+    timezone
+  });
+
+  try {
+    // Construir fechas de inicio y fin del día en formato ISO
+    // Microsoft Graph API espera UTC, pero aplicaremos timezone en el filtro
+    const dayStart = `${date}T00:00:00.000Z`;
+    const dayEnd = `${date}T23:59:59.999Z`;
+
+    // Determinar endpoint según el calendar ID
+    let eventsUrl = 'https://graph.microsoft.com/v1.0/me/events';
+    if (calendarId && calendarId !== 'primary') {
+      eventsUrl = `https://graph.microsoft.com/v1.0/me/calendars/${calendarId}/events`;
+    }
+
+    // Construir query con filtros de fecha y ordenamiento
+    const queryParams = new URLSearchParams({
+      '$filter': `start/dateTime ge '${dayStart}' and start/dateTime le '${dayEnd}'`,
+      '$orderby': 'start/dateTime',
+      '$top': '250', // Límite razonable para un día
+      '$select': 'id,subject,start,end,isAllDay,showAs,responseStatus,organizer,attendees,body,location,recurrence,webLink'
+    });
+
+    const fullUrl = `${eventsUrl}?${queryParams.toString()}`;
+
+    console.log('🔍 [OUTLOOK_SERVICE] Query parameters:', {
+      url: fullUrl,
+      calendarId,
+      dateRange: `${dayStart} - ${dayEnd}`,
+      timezone
+    });
+
+    // Realizar consulta a Microsoft Graph API
+    const response = await fetch(fullUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'Prefer': `outlook.timezone="${timezone}"` // Especificar timezone para Outlook
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new BadRequestException(
+        `Failed to get Outlook events: ${error.error?.message || 'Unknown error'} (${response.status})`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.value || data.value.length === 0) {
+      console.log('📅 [OUTLOOK_SERVICE] No events found for date:', date);
+      return [];
+    }
+
+    // Convertir eventos de Outlook a formato estándar
+    const events: CalendarEvent[] = data.value
+      .filter((item: any) => {
+        // Filtrar eventos válidos (no cancelados ni rechazados)
+        return item.showAs !== 'free' && // No incluir tiempo libre
+               item.responseStatus?.response !== 'declined' && // No incluir eventos rechazados
+               item.start && item.end; // Debe tener fechas válidas
+      })
+      .map((item: any) => {
+        const isAllDay = item.isAllDay === true;
+        
+        // Manejo de fechas de Outlook
+        const startTime = isAllDay 
+          ? new Date(`${item.start.dateTime.split('T')[0]}T00:00:00.000Z`)
+          : new Date(item.start.dateTime);
+          
+        const endTime = isAllDay 
+          ? new Date(`${item.end.dateTime.split('T')[0]}T23:59:59.999Z`)
+          : new Date(item.end.dateTime);
+
+        // Mapear estado de Outlook a formato estándar
+        let status: 'confirmed' | 'cancelled' | 'tentative' = 'confirmed';
+        if (item.responseStatus?.response === 'declined') {
+          status = 'cancelled';
+        } else if (item.responseStatus?.response === 'tentativelyAccepted') {
+          status = 'tentative';
+        }
+
+        const event: CalendarEvent = {
+          id: item.id,
+          title: item.subject || 'Evento sin título',
+          startTime,
+          endTime,
+          isAllDay,
+          status,
+          organizer: item.organizer ? {
+            email: item.organizer.emailAddress?.address || '',
+            name: item.organizer.emailAddress?.name || undefined
+          } : undefined,
+          attendees: item.attendees?.map((attendee: any) => ({
+            email: attendee.emailAddress?.address || '',
+            name: attendee.emailAddress?.name || undefined,
+            responseStatus: mapOutlookResponseStatus(attendee.status?.response)
+          })),
+          description: item.body?.content || undefined,
+          location: item.location?.displayName || undefined,
+          isRecurring: !!item.recurrence,
+          timeZone: timezone,
+          providerData: {
+            provider: 'outlook',
+            originalEvent: item
+          }
+        };
+
+        return event;
+      });
+
+    console.log('✅ [OUTLOOK_SERVICE] Events retrieved successfully:', {
+      calendarId,
+      date,
+      eventsCount: events.length,
+      allDayEvents: events.filter(e => e.isAllDay).length,
+      timedEvents: events.filter(e => !e.isAllDay).length
+    });
+
+    // Log de eventos para debugging
+    events.forEach(event => {
+      console.log(`   📝 Event: "${event.title}" (${event.startTime.toISOString()} - ${event.endTime.toISOString()}) [AllDay: ${event.isAllDay}]`);
+    });
+
+    return events;
+
+  } catch (error) {
+    console.error('❌ [OUTLOOK_SERVICE] Error getting calendar events:', {
+      error: error instanceof Error ? error.message : String(error),
+      calendarId,
+      date,
+      timezone
+    });
+
+    // Para eventos del calendario, es mejor fallar silenciosamente que interrumpir el flujo
+    // El sistema puede continuar funcionando solo con meetings + availability
+    console.warn('⚠️ [OUTLOOK_SERVICE] Continuing without calendar events due to error');
+    return [];
+  }
+};
+
+/**
+ * FUNCIÓN ALTERNATIVA: Obtiene eventos usando la nueva interfaz más robusta
+ * 
+ * @param accessToken - Token de acceso válido de Microsoft
+ * @param query - Parámetros de consulta estructurados
+ * @returns Resultado detallado de la consulta
+ */
+export const getOutlookCalendarEventsAdvanced = async (
+  accessToken: string,
+  query: CalendarEventsQuery
+): Promise<CalendarEventsResult> => {
+  console.log('📅 [OUTLOOK_SERVICE] Getting calendar events (advanced):', query);
+
+  const result: CalendarEventsResult = {
+    events: [],
+    totalCount: 0,
+    provider: 'outlook',
+    calendarId: query.calendarId,
+    date: query.date,
+    hasErrors: false,
+    errors: []
+  };
+
+  try {
+    const events = await getOutlookCalendarEvents(
+      accessToken,
+      query.calendarId,
+      query.date,
+      query.timezone
+    );
+
+    // Aplicar filtros adicionales si se especifican
+    let filteredEvents = events;
+
+    if (!query.includeAllDay) {
+      filteredEvents = filteredEvents.filter(event => !event.isAllDay);
+    }
+
+    if (!query.includeCancelled) {
+      filteredEvents = filteredEvents.filter(event => event.status !== 'cancelled');
+    }
+
+    if (query.maxResults) {
+      filteredEvents = filteredEvents.slice(0, query.maxResults);
+    }
+
+    result.events = filteredEvents;
+    result.totalCount = events.length;
+
+    console.log('✅ [OUTLOOK_SERVICE] Advanced query completed:', {
+      originalEvents: events.length,
+      filteredEvents: filteredEvents.length,
+      appliedFilters: {
+        includeAllDay: query.includeAllDay,
+        includeCancelled: query.includeCancelled,
+        maxResults: query.maxResults
+      }
+    });
+
+    return result;
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    result.hasErrors = true;
+    result.errors = [errorMessage];
+
+    console.error('❌ [OUTLOOK_SERVICE] Advanced query failed:', {
+      error: errorMessage,
+      query
+    });
+
+    return result;
+  }
+};
+
+/**
+ * FUNCIÓN HELPER: Mapea estados de respuesta de Outlook a formato estándar
+ * 
+ * @param outlookStatus - Estado de respuesta de Outlook
+ * @returns Estado en formato estándar
+ */
+function mapOutlookResponseStatus(outlookStatus?: string): 'accepted' | 'declined' | 'tentative' | 'needsAction' {
+  switch (outlookStatus) {
+    case 'accepted':
+      return 'accepted';
+    case 'declined':
+      return 'declined';
+    case 'tentativelyAccepted':
+      return 'tentative';
+    case 'notResponded':
+    default:
+      return 'needsAction';
+  }
+}
+
+/**
+ * FUNCIÓN HELPER: Detecta si un evento de Outlook debe considerarse como ocupado
+ * 
+ * @param event - Evento de Outlook en formato original
+ * @returns true si el evento marca tiempo como ocupado
+ */
+export const isOutlookEventBusy = (event: any): boolean => {
+  // En Outlook, los valores de showAs pueden ser:
+  // 'free', 'tentative', 'busy', 'oof' (out of office), 'workingElsewhere'
+  const busyStatuses = ['busy', 'tentative', 'oof', 'workingElsewhere'];
+  return busyStatuses.includes(event.showAs?.toLowerCase());
 };
