@@ -31,10 +31,12 @@ export const getUserMeetingsController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = req.user?.id as string;
 
+    const timezone = req.query.timezone as string || 'UTC';
+
     const filter =
       (req.query.filter as MeetingFilterEnumType) || MeetingFilterEnum.UPCOMING;
 
-    const meetings = await getUserMeetingsService(userId, filter);
+    const meetings = await getUserMeetingsService(userId, filter,timezone);
 
     return res.status(HTTPSTATUS.OK).json({
       message: "Meetings fetched successfully",

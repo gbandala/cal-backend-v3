@@ -44,6 +44,10 @@ import {
   // IntegrationAppTypeEnum,
 } from "../database/entities/integration.entity";
 import { IntegrationAppTypeEnum } from "../enums/integration.enum";
+import { format } from "date-fns";
+import {
+  convertMeetingsToUserTimezone,
+} from "../utils/timezone-helpers";
 
 // ✅ FACTORY SINGLETON: Inicialización lazy del factory
 let meetingStrategyFactory: MeetingStrategyFactory | null = null;
@@ -91,8 +95,15 @@ function getMeetingStrategyFactory(): MeetingStrategyFactory {
  */
 export const getUserMeetingsService = async (
   userId: string,
-  filter: MeetingFilterEnumType
+  filter: MeetingFilterEnumType,
+  timezone: string = 'UTC'
 ) => {
+  console.log('🌍 [MEETINGS] Getting user meetings with timezone support:', {
+    userId,
+    filter,
+    timezone
+  });
+
   const meetingRepository = AppDataSource.getRepository(Meeting);
 
   // Configuración base: buscar reuniones del usuario específico
@@ -119,21 +130,48 @@ export const getUserMeetingsService = async (
     order: { startTime: "ASC" },
   });
 
+  const meetingsInUserTz = convertMeetingsToUserTimezone(
+    meetings.map(m => ({
+      ...m,
+      startTime: m.startTime,
+      endTime: m.endTime,
+      status: m.status
+    })),
+    timezone
+  );
+
+
   // PROCESAR FECHAS: Remover 'Z' para compatibilidad
-  const processedMeetings = meetings.map(meeting => {
-    const processedMeeting = { ...meeting };
+  // const processedMeetings = meetings.map(meeting => {
+  //   const processedMeeting = { ...meeting };
 
-    if (processedMeeting.startTime) {
-      const startTimeStr = processedMeeting.startTime.toISOString();
-      processedMeeting.startTime = startTimeStr.replace('Z', '') as any;
-    }
+  //   if (processedMeeting.startTime) {
+  //     const startTimeStr = processedMeeting.startTime.toISOString();
+  //     processedMeeting.startTime = startTimeStr.replace('Z', '') as any;
+  //   }
 
-    if (processedMeeting.endTime) {
-      const endTimeStr = processedMeeting.endTime.toISOString();
-      processedMeeting.endTime = endTimeStr.replace('Z', '') as any;
-    }
-    return processedMeeting;
+  //   if (processedMeeting.endTime) {
+  //     const endTimeStr = processedMeeting.endTime.toISOString();
+  //     processedMeeting.endTime = endTimeStr.replace('Z', '') as any;
+  //   }
+  //   return processedMeeting;
+  // });
+  const processedMeetings = meetingsInUserTz.map((meeting, index) => {
+    const originalMeeting = meetings[index];
+
+    return {
+      ...originalMeeting,
+      // ✅ Fechas en timezone del usuario (sin 'Z' para indicar que no son UTC)
+      startTime: format(meeting.startTime, "yyyy-MM-dd'T'HH:mm:ss") as any,
+      endTime: format(meeting.endTime, "yyyy-MM-dd'T'HH:mm:ss") as any,
+    };
   });
+
+  console.log('✅ [MEETINGS] Processed meetings with timezone conversion:', {
+    count: processedMeetings.length,
+    timezone
+  });
+
 
   return processedMeetings || [];
 };
