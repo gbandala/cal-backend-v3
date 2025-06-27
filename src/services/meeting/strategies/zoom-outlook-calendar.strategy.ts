@@ -25,6 +25,7 @@ import {
 import { ZoomMeetingProvider } from  "../../../services/meeting/providers/zoom.provider";
 import { OutlookCalendarProvider } from "../providers/calendar/outlook-calendar.provider";
 import { BadRequestException, NotFoundException } from "../../../utils/app-error";
+import { convertUserTimezoneToUTC } from "../../../utils/timezone-helpers";
 
 export class ZoomOutlookCalendarStrategy implements IMeetingStrategy {
   
@@ -108,6 +109,9 @@ export class ZoomOutlookCalendarStrategy implements IMeetingStrategy {
         expiryDate: outlookIntegration.expiry_date
       });
 
+      const utcstartTime = convertUserTimezoneToUTC(new Date(dto.startTime), timezone);
+      const utcendTime = convertUserTimezoneToUTC(new Date(dto.endTime), timezone);
+
       // PASO 6: Guardar en base de datos
       console.log('📅 [ZOOM_OUTLOOK_STRATEGY] Step 6: Saving to database');
       const meeting = await this.saveMeetingToDatabase({
@@ -115,8 +119,10 @@ export class ZoomOutlookCalendarStrategy implements IMeetingStrategy {
         guestName,
         guestEmail,
         additionalInfo,
-        startTime,
-        endTime,
+        // startTime,
+        // endTime,
+        startTime:utcstartTime,
+        endTime:utcendTime,
         meetLink: meetingInfo.joinUrl,
         calendarEventId,
         calendarAppType: IntegrationAppTypeEnum.OUTLOOK_WITH_ZOOM,

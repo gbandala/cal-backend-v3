@@ -10,28 +10,29 @@
  */
 
 import { AppDataSource } from "../../../config/database.config";
-import { 
-  Integration, 
+import {
+  Integration,
 } from "../../../database/entities/integration.entity";
 import { IntegrationAppTypeEnum } from "../../../enums/integration.enum";
 import { Event } from "../../../database/entities/event.entity";
 import { Meeting, MeetingStatus } from "../../../database/entities/meeting.entity";
 import { CreateMeetingDto } from "../../../database/dto/meeting.dto";
-import { 
-  IMeetingStrategy, 
-  MeetingCreationResult, 
-  MeetingCancellationResult 
+import {
+  IMeetingStrategy,
+  MeetingCreationResult,
+  MeetingCancellationResult
 } from "../interfaces/meeting-strategy.interface";
-import { ZoomMeetingProvider } from  "../../../services/meeting/providers/zoom.provider";
+import { ZoomMeetingProvider } from "../../../services/meeting/providers/zoom.provider";
 import { GoogleCalendarProvider } from "../providers/calendar/google-calendar.provider";
 import { BadRequestException, NotFoundException } from "../../../utils/app-error";
+import { convertUserTimezoneToUTC } from "../../../utils/timezone-helpers";
 
 export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
-  
+
   constructor(
     private zoomProvider: ZoomMeetingProvider,
     private googleCalendarProvider: GoogleCalendarProvider
-  ) {}
+  ) { }
 
   /**
    * Crea un meeting usando Zoom + Google Calendar
@@ -52,13 +53,13 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
     try {
       // PASO 1: Validar evento
       const event = await this.getAndValidateEvent(eventId);
-      
+
       // PASO 2: Validar integraciones
       await this.validateIntegrations(event.user.id);
-      
+
       // PASO 3: Obtener integraciones validadas
       const { zoomIntegration, googleCalendarIntegration } = await this.getValidatedIntegrations(event.user.id);
-      
+
       // PASO 4: Crear meeting de Zoom
       console.log('📅 [ZOOM_GOOGLE_STRATEGY] Step 4: Creating Zoom meeting');
       const meetingInfo = await this.zoomProvider.createMeeting({
@@ -86,9 +87,9 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
       console.log('startTime:', startTime);
       console.log('endTime:', endTime);
       console.log('timezone:', timezone);
-      
+
       const calendarId = this.determineCalendarId(event, googleCalendarIntegration);
-      
+
       const calendarEventId = await this.googleCalendarProvider.createEvent(calendarId, {
         id: '', // Se genera automáticamente
         title: `${guestName} - ${event.title}`,
@@ -108,6 +109,8 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
         expiryDate: googleCalendarIntegration.expiry_date
       });
 
+      const utcstartTime = convertUserTimezoneToUTC(new Date(dto.startTime), timezone);
+      const utcendTime = convertUserTimezoneToUTC(new Date(dto.endTime), timezone);
       // PASO 6: Guardar en base de datos
       console.log('📅 [ZOOM_GOOGLE_STRATEGY] Step 6: Saving to database');
       const meeting = await this.saveMeetingToDatabase({
@@ -115,11 +118,13 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
         guestName,
         guestEmail,
         additionalInfo,
-        startTime,
-        endTime,
+        // startTime,
+        // endTime,
+        startTime:utcstartTime,
+        endTime:utcendTime,
         meetLink: meetingInfo.joinUrl,
         calendarEventId,
-        calendarAppType: IntegrationAppTypeEnum.ZOOM_GOOGLE_CALENDAR, 
+        calendarAppType: IntegrationAppTypeEnum.ZOOM_GOOGLE_CALENDAR,
         zoom_meeting_id: Number(meetingInfo.id),
         zoom_join_url: meetingInfo.joinUrl,
         zoom_start_url: meetingInfo.startUrl,
@@ -168,10 +173,10 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
     try {
       // PASO 1: Buscar meeting
       const meeting = await this.getMeetingById(meetingId);
-      
+
       // PASO 2: Obtener integraciones validadas
       const { zoomIntegration, googleCalendarIntegration } = await this.getValidatedIntegrations(meeting.event.user.id);
-      
+
       let zoomDeleted = false;
       let googleCalendarDeleted = false;
       const errors: string[] = [];
@@ -206,7 +211,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
       try {
         console.log('📅 [ZOOM_GOOGLE_STRATEGY] Cancelling Google Calendar event');
         const calendarId = meeting.calendar_id || 'primary';
-        
+
         await this.googleCalendarProvider.deleteEvent(
           calendarId,
           meeting.calendarEventId,
@@ -276,7 +281,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
         refreshToken: zoomIntegration.refresh_token,
         expiryDate: zoomIntegration.expiry_date
       });
-      
+
       console.log('📅 [ZOOM_GOOGLE_STRATEGY] Validating Google Calendar token');
       await this.googleCalendarProvider.validateAndRefreshToken({
         accessToken: googleCalendarIntegration.access_token,
@@ -308,7 +313,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
 
   private async getAndValidateEvent(eventId: string): Promise<Event> {
     const eventRepository = AppDataSource.getRepository(Event);
-    
+
     const event = await eventRepository.findOne({
       where: { id: eventId, isPrivate: false },
       relations: ["user"],
@@ -323,7 +328,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
 
   private async getMeetingById(meetingId: string): Promise<Meeting> {
     const meetingRepository = AppDataSource.getRepository(Meeting);
-    
+
     const meeting = await meetingRepository.findOne({
       where: { id: meetingId },
       relations: ["event", "event.user"],
@@ -338,7 +343,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
 
   private async getIntegrations(userId: string) {
     const integrationRepository = AppDataSource.getRepository(Integration);
-    
+
     const [zoomIntegration, googleCalendarIntegration] = await Promise.all([
       integrationRepository.findOne({
         where: { user: { id: userId }, app_type: IntegrationAppTypeEnum.ZOOM_MEETING }
@@ -359,7 +364,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
     googleCalendarIntegration: Integration;
   }> {
     const { zoomIntegration, googleCalendarIntegration } = await this.getIntegrations(userId);
-    
+
     if (!zoomIntegration) {
       throw new BadRequestException("Zoom integration not found. Please connect your Zoom account.");
     }
@@ -373,9 +378,9 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
 
   private determineCalendarId(event: Event, googleCalendarIntegration: Integration): string {
     // Prioridad: calendar_id del evento > calendar_id de la integración > 'primary'
-    return event.calendar_id || 
-           googleCalendarIntegration.calendar_id || 
-           'primary';
+    return event.calendar_id ||
+      googleCalendarIntegration.calendar_id ||
+      'primary';
   }
 
   private buildEventDescription(additionalInfo?: string, zoomJoinUrl?: string): string {
@@ -390,7 +395,7 @@ export class ZoomGoogleCalendarStrategy implements IMeetingStrategy {
 
   private async saveMeetingToDatabase(data: any): Promise<Meeting> {
     const meetingRepository = AppDataSource.getRepository(Meeting);
-    
+
     const meeting = meetingRepository.create({
       event: data.event,
       user: data.event.user,

@@ -23,6 +23,7 @@ import {
 } from "../interfaces/meeting-strategy.interface";
 import { GoogleMeetProvider } from "../providers/google-meet.provider";
 import { BadRequestException, NotFoundException } from "../../../utils/app-error";
+import { convertUserTimezoneToUTC } from "../../../utils/timezone-helpers";
 
 export class GoogleMeetCalendarStrategy implements IMeetingStrategy {
 
@@ -83,6 +84,8 @@ export class GoogleMeetCalendarStrategy implements IMeetingStrategy {
         expiryDate: googleIntegration.expiry_date
       });
 
+      const utcstartTime = convertUserTimezoneToUTC(new Date(dto.startTime), timezone);
+      const utcendTime = convertUserTimezoneToUTC(new Date(dto.endTime), timezone);
       // PASO 7: Guardar en base de datos
       console.log('📅 [GOOGLE_MEET_STRATEGY] Step 7: Saving to database');
       const meeting = await this.saveMeetingToDatabase({
@@ -90,8 +93,10 @@ export class GoogleMeetCalendarStrategy implements IMeetingStrategy {
         guestName,
         guestEmail,
         additionalInfo,
-        startTime,
-        endTime,
+        // startTime,
+        // endTime,
+        startTime:utcstartTime,
+        endTime:utcendTime,
         meetLink: meetingInfo.joinUrl,
         calendarEventId: String(meetingInfo.id),
         calendarAppType: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
@@ -170,7 +175,7 @@ export class GoogleMeetCalendarStrategy implements IMeetingStrategy {
           },
           meeting.event.user.id,
           calendarIdForDeletion
-          
+
         );
 
         meetingDeleted = true;
@@ -314,12 +319,12 @@ export class GoogleMeetCalendarStrategy implements IMeetingStrategy {
       'primary';
   }
 
-    private determineCalendarIdForDeletion(meeting: Meeting, googleIntegration: Integration): string {
+  private determineCalendarIdForDeletion(meeting: Meeting, googleIntegration: Integration): string {
     // Prioridad: calendar_id del meeting > calendar_id del evento > calendar_id de la integración > 'primary'
-    return meeting.calendar_id || 
-           meeting.event.calendar_id || 
-           googleIntegration.calendar_id || 
-           'primary';
+    return meeting.calendar_id ||
+      meeting.event.calendar_id ||
+      googleIntegration.calendar_id ||
+      'primary';
   }
 
   // 🔧 FIX: Método saveMeetingToDatabase corregido
