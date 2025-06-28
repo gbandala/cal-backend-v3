@@ -9,8 +9,11 @@ import { Event } from "../database/entities/event.entity";
 import { Integration } from "../database/entities/integration.entity";
 import { IntegrationAppTypeEnum } from "../enums/integration.enum";
 import { addDays, format, parseISO } from "date-fns";
+import { EventLocationEnumType } from "../enums/EventLocationEnum";
+import { Between } from "typeorm";
+import { Meeting } from "../database/entities/meeting.entity";
+import { MeetingStatus } from "../enums/meeting.enum";
 
-// 🔥 IMPORTS: Timezone helpers y funciones de Google Calendar
 import {
   convertMeetingsToUserTimezone,
   generateTimeSlotsInUserTimezone,
@@ -23,9 +26,11 @@ import {
   validateGoogleCalendarToken
 } from "../services/google.service";
 
-/**
- * ✅ SIN CAMBIOS - Obtener disponibilidad de un usuario específico
- */
+import {
+  getOutlookCalendarEvents,
+  validateMicrosoftToken
+} from "../services/outlook.service";
+
 export const getUserAvailabilityService = async (userId: string, timezone: string = 'UTC') => {
   const userRepository = AppDataSource.getRepository(User);
 
@@ -57,9 +62,6 @@ export const getUserAvailabilityService = async (userId: string, timezone: strin
   return availabilityData;
 };
 
-/**
- * ✅ SIN CAMBIOS - Actualizar configuración de disponibilidad
- */
 export const updateAvailabilityService = async (
   userId: string,
   data: UpdateAvailabilityDto,
@@ -103,19 +105,11 @@ export const updateAvailabilityService = async (
   return { success: true };
 };
 
-/**
- * 🔥 FUNCIÓN PRINCIPAL CORREGIDA - Obtener disponibilidad para evento público
- */
 export const getAvailabilityForPublicEventService = async (
   eventId: string,
   timezone: string = 'UTC',
   date?: string
 ) => {
-  console.log('🌍 [AVAILABILITY] Getting availability with timezone support:', {
-    eventId,
-    timezone,
-    date
-  });
 
   const eventRepository = AppDataSource.getRepository(Event);
 
@@ -133,7 +127,7 @@ export const getAvailabilityForPublicEventService = async (
 
     if (!event || !event.user.availability) return [];
 
-    console.log('✅ [AVAILABILITY] Event and availability found');
+    // console.log('✅ [AVAILABILITY] Event and availability found');
 
     const { availability, meetings } = event.user;
     const daysOfWeek = Object.values(DayOfWeekEnum);
@@ -158,101 +152,38 @@ export const getAvailabilityForPublicEventService = async (
       if (dayAvailability && dayAvailability.isAvailable) {
         const dateStr = format(dayDate, "yyyy-MM-dd");
 
-        console.log(`🔍 [AVAILABILITY] Processing ${dayOfWeek} (${dateStr})`);
+        const dayMeetingsUTC = meetings.filter(meeting => {
+          if (meeting.status !== MeetingStatus.SCHEDULED) return false;
 
-        // 4. Convertir meetings de BD a timezone del usuario
-        const meetingsInUserTz = convertMeetingsToUserTimezone(
-          meetings.filter(m => m.status === 'SCHEDULED'),
+          // Convertir la fecha objetivo a UTC para comparar
+          const targetDateUTC = format(parseISO(`${dateStr}T12:00:00Z`), 'yyyy-MM-dd');
+          const meetingDateUTC = format(meeting.startTime, 'yyyy-MM-dd');
+
+          return meetingDateUTC === targetDateUTC;
+        });
+
+        console.log('🐛 [DEBUG] Meetings conversion check:');
+        dayMeetingsUTC.forEach(meeting => {
+          const utcTime = format(meeting.startTime, 'HH:mm');
+          const userTzMeeting = convertMeetingsToUserTimezone([meeting], timezone)[0];
+          const localTime = format(userTzMeeting.startTime, 'HH:mm');
+
+          console.log(`   Meeting "${meeting.guestName}": ${utcTime} UTC → ${localTime} ${timezone}`);
+        });
+
+        // 2. DESPUÉS convertir a timezone del usuario
+        const meetingsInUserTz = convertMeetingsToUserTimezone(dayMeetingsUTC, timezone);
+        console.log('[DB-MEETINGS]:', meetingsInUserTz);
+
+        // 🔥 5. OBTENER EVENTOS DE CALENDARIO SEGÚN EL PROVEEDOR
+        const calendarEventsInUserTz = await getCalendarEventsForEvent(
+          event,
+          dateStr,
           timezone
         );
 
-        console.log('📅 [AVAILABILITY] Meetings converted to user timezone:', {
-          originalCount: meetings.length,
-          filteredCount: meetingsInUserTz.length,
-          timezone
-        });
-
-        // 5. Obtener y procesar eventos de Google Calendar
-        let calendarEventsInUserTz: Array<{
-          title: string;
-          start: string;
-          end: string;
-          status: string;
-        }> = [];
-
-        try {
-          // Obtener integración de Google Calendar
-          const integrationRepository = AppDataSource.getRepository(Integration);
-          const integration = await integrationRepository.findOne({
-            where: {
-              userId: event.user.id,
-              app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
-              isConnected: true
-            }
-          });
-
-          if (integration) {
-            console.log('🔍 [AVAILABILITY_SERVICE] Looking for calendar integrations for user:', event.user.id);
-            console.log('✅ [AVAILABILITY_SERVICE] Found Google Calendar integration, fetching events...');
-
-            // Validar token
-            const validToken = await validateGoogleCalendarToken(
-              integration.access_token,
-              integration.refresh_token,
-              integration.expiry_date
-            );
-
-            // Obtener eventos usando la función existente
-            const calendarEvents = await getGoogleCalendarEvents(
-              validToken,
-              event.calendar_id || integration.calendar_id || 'primary',
-              dateStr,
-              timezone
-            );
-
-            // Convertir eventos a formato simplificado (ya vienen en timezone correcto)
-            // calendarEventsInUserTz = calendarEvents
-            //   .filter(calEvent => !calEvent.isAllDay) // Filtrar eventos de todo el día
-            //   .map(calEvent => ({
-            //     title: calEvent.title,
-            //     start: format(calEvent.startTime, 'HH:mm'),
-            //     end: format(calEvent.endTime, 'HH:mm'),
-            //     status: calEvent.status ?? ""
-            //   }));
-
-            calendarEventsInUserTz = calendarEvents
-              .filter(calEvent => !calEvent.isAllDay) // Filtrar eventos de todo el día
-              .map(calEvent => {
-                // ✅ CONVERTIR de UTC a timezone del usuario
-                const startInUserTz = convertUTCToUserTimezone(calEvent.startTime, timezone);
-                const endInUserTz = convertUTCToUserTimezone(calEvent.endTime, timezone);
-
-                return {
-                  title: calEvent.title,
-                  start: format(startInUserTz, 'HH:mm'), // ✅ Ahora será 09:00 en lugar de 15:00
-                  end: format(endInUserTz, 'HH:mm'),     // ✅ Ahora será 10:00 en lugar de 16:00
-                  status: calEvent.status ?? ""
-                };
-              });
-            console.log('📅 [AVAILABILITY] Found ' + calendarEvents.length + ' blocking calendar events for ' + dayOfWeek + ':', calendarEventsInUserTz);
-
-            // Log de eventos que bloquean
-            calendarEventsInUserTz.forEach(calEvent => {
-              if (calEvent.status === 'confirmed') {
-                console.log(`   ✅ Including blocking event: "${calEvent.title}" (${calEvent.status})`);
-              }
-            });
-
-          } else {
-            console.log('🔍 [AVAILABILITY_SERVICE] No Google Calendar integration found');
-          }
-
-        } catch (calendarError) {
-          console.warn('⚠️ [AVAILABILITY] Failed to fetch calendar events:', calendarError);
-        }
-
         // 6. Generar slots en timezone del usuario
-        const slots = generateAvailableTimeSlotsWithTimezone(
+        const slotsResult = generateAvailableTimeSlotsWithTimezone(
           dayAvailability.startTime.slice(0, 5),  // "09:00"
           dayAvailability.endTime.slice(0, 5),    // "17:00"
           event.duration,
@@ -267,19 +198,21 @@ export const getAvailabilityForPublicEventService = async (
         availableDays.push({
           day: dayOfWeek,
           date: dateStr,
-          slots,
+          slots: slotsResult.availableSlots,  // ✅ Usar availableSlots del resultado
           isAvailable: true,
+          slotsBlocked: slotsResult.blockedSlots, // 🔥 NUEVO: Agregar slots bloqueados
           debug: {
             totalCalendarEvents: calendarEventsInUserTz.length,
             blockingCalendarEvents: calendarEventsInUserTz.filter(e => e.status === 'confirmed').length,
             meetingsCount: meetingsInUserTz.length,
-            calendarId: event.calendar_id
+            calendarId: event.calendar_id,
+            calendarProvider: await determineCalendarProvider(event)
           }
         });
       }
     }
 
-    console.log("✅ [AVAILABILITY] Final available days:", availableDays.length);
+
     return availableDays;
 
   } catch (error) {
@@ -288,9 +221,6 @@ export const getAvailabilityForPublicEventService = async (
   }
 };
 
-/**
- * 🔥 FUNCIÓN CORREGIDA - Generar slots con manejo correcto de timezone
- */
 function generateAvailableTimeSlotsWithTimezone(
   startTime: string,        // "09:00"
   endTime: string,          // "17:00"
@@ -300,7 +230,10 @@ function generateAvailableTimeSlotsWithTimezone(
   dateStr: string,          // "2025-06-27"
   timeGap: number = 30,
   timezone: string
-): string[] {
+): {
+  availableSlots: string[],
+  blockedSlots: Array<{ slot: string; reason: string; value: string; timeRange: string }>
+} {
 
   console.log('🔍 [SLOTS] Generating slots for ' + dateStr + ':', {
     startTime,
@@ -312,7 +245,23 @@ function generateAvailableTimeSlotsWithTimezone(
     isToday: format(new Date(), 'yyyy-MM-dd') === dateStr
   });
 
+  // 🔥 LOG DETALLADO DE CONFLICTOS PARA DEBUGGING
+  console.log('📋 [SLOTS] Meetings blocking slots:');
+  meetings.forEach(meeting => {
+    const startInUserTz = convertUTCToUserTimezone(meeting.startTime, timezone);
+    const endInUserTz = convertUTCToUserTimezone(meeting.endTime, timezone);
+    console.log(`   🚫 Meeting: "${meeting.guestName}" ${format(startInUserTz, 'HH:mm')}-${format(endInUserTz, 'HH:mm')}`);
+  });
+
+  console.log('📋 [SLOTS] Calendar events blocking slots:');
+  calendarEvents.forEach(event => {
+    if (event.status === 'confirmed') {
+      console.log(`   🚫 Calendar: "${event.title}" ${event.start}-${event.end}`);
+    }
+  });
+
   const availableSlots: string[] = [];
+  const blockedSlots: Array<{ slot: string; reason: string; value: string; timeRange: string }> = [];
 
   // Generar todos los slots posibles en timezone del usuario
   const allSlots = generateTimeSlotsInUserTimezone(
@@ -355,17 +304,30 @@ function generateAvailableTimeSlotsWithTimezone(
       console.log(`   ✅ [AVAILABLE] Slot ${slotStart}-${slotEnd} is available`);
       availableSlots.push(slotStart);
     } else {
-      console.log(`   ❌ [CONFLICT] Slot ${slotStart}-${slotEnd} conflicts with ${conflictCheck.conflictDetail?.type}:`, conflictCheck.conflictDetail);
+      // ✅ CAPTURAR INFORMACIÓN DEL SLOT BLOQUEADO
+      const conflictTitle = conflictCheck.conflictDetail?.title || conflictCheck.conflictDetail?.guestName || 'Unknown';
+      const conflictTime = conflictCheck.conflictDetail?.eventTime || conflictCheck.conflictDetail?.meetingTime || 'Unknown time';
+      const reason = conflictCheck.conflictDetail?.type === 'meeting' ? 'meeting' : 'calendar';
+
+      // 🔥 AGREGAR AL ARRAY DE SLOTS BLOQUEADOS
+      blockedSlots.push({
+        slot: slotStart,
+        reason: reason,
+        value: conflictTitle,
+        timeRange: conflictTime
+      });
+
+      console.log(`   ❌ [CONFLICT] Slot ${slotStart}-${slotEnd} conflicts with ${conflictCheck.conflictDetail?.type}: "${conflictTitle}" (${conflictTime})`);
     }
   }
 
-  console.log(`✅ [SLOTS] Generated ${availableSlots.length} available slots for ${dateStr}:`, availableSlots);
-  return availableSlots;
+  console.log(`✅ [SLOTS] Generated ${availableSlots.length} available slots and ${blockedSlots.length} blocked slots for ${dateStr}`);
+  console.log('🚫 [BLOCKED] Blocked slots:', blockedSlots);
+  console.log('------------------------------------------------------------------');
+
+  return { availableSlots, blockedSlots };
 }
 
-/**
- * ✅ FUNCIÓN HELPER SIN CAMBIOS - Calcular próxima fecha para un día específico
- */
 function getNextDateForDay(dayOfWeek: string): Date {
   const days = [
     "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
@@ -378,4 +340,350 @@ function getNextDateForDay(dayOfWeek: string): Date {
   const daysUntilTarget = (targetDay - todayDay + 7) % 7;
 
   return addDays(today, daysUntilTarget);
+}
+
+async function determineCalendarProvider(event: Event): Promise<'google' | 'outlook' | 'none'> {
+  // console.log('🔍 [CALENDAR_PROVIDER] Determining calendar provider for event:', {
+  //   eventId: event.id,
+  //   locationType: event.locationType,
+  //   calendarId: event.calendar_id
+  // });
+
+  const integrationRepository = AppDataSource.getRepository(Integration);
+
+  // 🎯 ESTRATEGIA 1: Basarse en el locationType del evento
+  switch (event.locationType) {
+    case EventLocationEnumType.GOOGLE_MEET_AND_CALENDAR:
+    case EventLocationEnumType.GOOGLE_WITH_ZOOM:
+      // console.log('------------------------------------------------------------------');
+      console.log('📅 [CALENDAR_PROVIDER] Using Google Calendar based on locationType:', event.locationType);
+      return 'google';
+
+    case EventLocationEnumType.OUTLOOK_WITH_ZOOM:
+    case EventLocationEnumType.OUTLOOK_WITH_TEAMS:
+      console.log('------------------------------------------------------------------');
+      console.log('📅 [CALENDAR_PROVIDER] Using Outlook Calendar based on locationType:', event.locationType);
+      return 'outlook';
+  }
+
+  // 🎯 ESTRATEGIA 2: Verificar qué integraciones tiene el usuario
+  const [googleIntegration, outlookIntegration] = await Promise.all([
+    integrationRepository.findOne({
+      where: {
+        userId: event.user.id,
+        app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
+        isConnected: true
+      }
+    }),
+    integrationRepository.findOne({
+      where: {
+        userId: event.user.id,
+        app_type: IntegrationAppTypeEnum.OUTLOOK_CALENDAR,
+        isConnected: true
+      }
+    })
+  ]);
+
+  // 🎯 ESTRATEGIA 3: Si tiene calendar_id específico, intentar determinar por el formato
+  if (event.calendar_id) {
+    // Los calendar_id de Google suelen ser emails o 'primary'
+    if (event.calendar_id === 'primary' || event.calendar_id.includes('@gmail.com') || event.calendar_id.includes('@googlemail.com')) {
+      if (googleIntegration) {
+        console.log('📅 [CALENDAR_PROVIDER] Using Google Calendar based on calendar_id format:', event.calendar_id);
+        return 'google';
+      }
+    }
+
+    // Los calendar_id de Outlook suelen ser IDs largos o emails de Microsoft
+    if (event.calendar_id.includes('@outlook.com') || event.calendar_id.includes('@hotmail.com') || event.calendar_id.includes('@live.com')) {
+      if (outlookIntegration) {
+        console.log('📅 [CALENDAR_PROVIDER] Using Outlook Calendar based on calendar_id format:', event.calendar_id);
+        return 'outlook';
+      }
+    }
+  }
+
+  // 🎯 ESTRATEGIA 4: Priorizar según disponibilidad de integraciones
+  if (googleIntegration && !outlookIntegration) {
+    console.log('📅 [CALENDAR_PROVIDER] Using Google Calendar (only integration available)');
+    return 'google';
+  }
+
+  if (outlookIntegration && !googleIntegration) {
+    console.log('📅 [CALENDAR_PROVIDER] Using Outlook Calendar (only integration available)');
+    return 'outlook';
+  }
+
+  if (googleIntegration && outlookIntegration) {
+    // Si tiene ambas, priorizar Google por defecto (o usar lógica adicional)
+    console.log('📅 [CALENDAR_PROVIDER] Using Google Calendar (both integrations available, defaulting to Google)');
+    return 'google';
+  }
+
+  console.log('📅 [CALENDAR_PROVIDER] No calendar provider available');
+  return 'none';
+}
+
+async function getCalendarEventsForEvent(
+  event: Event,
+  dateStr: string,
+  timezone: string
+): Promise<Array<{ title: string; start: string; end: string; status: string }>> {
+
+  const calendarProvider = await determineCalendarProvider(event);
+
+  console.log('📅 [CALENDAR_EVENTS] Getting calendar events for provider:', calendarProvider);
+
+  switch (calendarProvider) {
+    case 'google':
+      return await getGoogleCalendarEventsForEvent(event, dateStr, timezone);
+
+    case 'outlook':
+      return await getOutlookCalendarEventsForEvent(event, dateStr, timezone);
+
+    case 'none':
+    default:
+      console.log('📅 [CALENDAR_EVENTS] No calendar provider available, returning empty events');
+      return [];
+  }
+}
+
+async function getGoogleCalendarEventsForEvent(
+  event: Event,
+  dateStr: string,
+  timezone: string
+): Promise<Array<{ title: string; start: string; end: string; status: string }>> {
+
+  console.log('📗 [GOOGLE_CALENDAR] Getting Google Calendar events for event:', event.id);
+
+  try {
+    const integrationRepository = AppDataSource.getRepository(Integration);
+
+    const integration = await integrationRepository.findOne({
+      where: {
+        userId: event.user.id,
+        app_type: IntegrationAppTypeEnum.GOOGLE_MEET_AND_CALENDAR,
+        isConnected: true
+      }
+    });
+
+    if (!integration) {
+      console.log('📗 [GOOGLE_CALENDAR] No Google Calendar integration found');
+      return [];
+    }
+
+    console.log('✅ [GOOGLE_CALENDAR] Found Google Calendar integration, fetching events...');
+
+    // Validar token
+    const validToken = await validateGoogleCalendarToken(
+      integration.access_token,
+      integration.refresh_token,
+      integration.expiry_date
+    );
+
+    // Obtener eventos usando la función existente
+    const calendarEvents = await getGoogleCalendarEvents(
+      validToken,
+      event.calendar_id || integration.calendar_id || 'primary',
+      dateStr,
+      timezone
+    );
+
+    // 🔥 OBTENER MEETINGS EXISTENTES PARA FILTRAR DUPLICADOS
+    const existingMeetings = await AppDataSource.getRepository(Meeting).find({
+      where: {
+        user: { id: event.user.id },
+        status: MeetingStatus.SCHEDULED, // ✅ CORREGIR: Usar el enum correcto
+        // Filtrar meetings del día específico
+        startTime: Between(
+          new Date(`${dateStr}T00:00:00.000Z`),
+          new Date(`${dateStr}T23:59:59.999Z`)
+        )
+      }
+    });
+
+    console.log('📗 [GOOGLE_CALENDAR] Found existing meetings for filtering:', existingMeetings.length);
+
+    // Convertir eventos a formato simplificado
+    const eventsInUserTz = calendarEvents
+      .filter(calEvent => !calEvent.isAllDay) // Filtrar eventos de todo el día
+      .filter(calEvent => {
+        // 🔥 FILTRAR eventos que ya están como meetings en BD
+        const eventStartUTC = calEvent.startTime;
+        const eventEndUTC = calEvent.endTime;
+
+        // Verificar si existe un meeting en BD para el mismo horario
+        const isDuplicate = existingMeetings.some(meeting => {
+          const meetingStartUTC = meeting.startTime;
+          const meetingEndUTC = meeting.endTime;
+
+          // Comparar con tolerancia de ±5 minutos
+          const timeDiffStart = Math.abs(eventStartUTC.getTime() - meetingStartUTC.getTime());
+          const timeDiffEnd = Math.abs(eventEndUTC.getTime() - meetingEndUTC.getTime());
+
+          const tolerance = 5 * 60 * 1000; // 5 minutos en milliseconds
+
+          return timeDiffStart <= tolerance && timeDiffEnd <= tolerance;
+        });
+
+        if (isDuplicate) {
+          console.log(`   🔄 [GOOGLE_FILTER] Skipping duplicate event: "${calEvent.title}" (already in meetings DB)`);
+          return false;
+        }
+
+        return true;
+      })
+      .map(calEvent => {
+        // ✅ CONVERTIR de UTC a timezone del usuario
+        const startInUserTz = convertUTCToUserTimezone(calEvent.startTime, timezone);
+        const endInUserTz = convertUTCToUserTimezone(calEvent.endTime, timezone);
+
+        return {
+          title: calEvent.title,
+          start: format(startInUserTz, 'HH:mm'),
+          end: format(endInUserTz, 'HH:mm'),
+          status: calEvent.status ?? ""
+        };
+      });
+
+    console.log('📗 [GOOGLE_CALENDAR] Found ' + calendarEvents.length + ' total events, ' + eventsInUserTz.length + ' unique blocking events (after duplicate filtering)');
+
+    // Log de eventos que bloquean
+    eventsInUserTz.forEach(calEvent => {
+      if (calEvent.status === 'confirmed') {
+        console.log(`   ✅ Including Google blocking event: "${calEvent.title}" (${calEvent.status})`);
+      }
+    });
+
+    return eventsInUserTz;
+
+  } catch (error) {
+    console.warn('⚠️ [GOOGLE_CALENDAR] Failed to fetch Google calendar events:', error);
+    return [];
+  }
+}
+
+async function getOutlookCalendarEventsForEvent(
+  event: Event,
+  dateStr: string,
+  timezone: string
+): Promise<Array<{ title: string; start: string; end: string; status: string }>> {
+
+  try {
+    const integrationRepository = AppDataSource.getRepository(Integration);
+
+    const integration = await integrationRepository.findOne({
+      where: {
+        userId: event.user.id,
+        app_type: IntegrationAppTypeEnum.OUTLOOK_CALENDAR,
+        isConnected: true
+      }
+    });
+
+    if (!integration) {
+      console.log('📘 [OUTLOOK_CALENDAR] No Outlook Calendar integration found');
+      return [];
+    }
+
+    // Validar token de Microsoft
+    const validToken = await validateMicrosoftToken(
+      integration.access_token,
+      integration.refresh_token,
+      integration.expiry_date
+    );
+
+    // Obtener eventos de Outlook usando la función existente
+    const outlookEvents = await getOutlookCalendarEvents(
+      validToken,
+      event.calendar_id || integration.outlook_calendar_id || 'primary',
+      dateStr,
+      timezone
+    );
+
+    // 🔥 OBTENER MEETINGS EXISTENTES PARA FILTRAR DUPLICADOS
+    const existingMeetings = await AppDataSource.getRepository(Meeting).find({
+      where: {
+        user: { id: event.user.id },
+        status: MeetingStatus.SCHEDULED, // ✅ CORREGIR: Usar el enum correcto
+        // calendarAppType:event.calendar_id,
+        // Filtrar meetings del día específico
+        startTime: Between(
+          new Date(`${dateStr}T00:00:00.000Z`),
+          new Date(`${dateStr}T23:59:59.999Z`)
+        )
+      }
+    });
+
+    console.log('📘 [OUTLOOK_CALENDAR] existing meetings:', existingMeetings);
+
+    // Convertir eventos de Outlook a formato simplificado
+    const eventsInUserTz = outlookEvents
+      .filter(outlookEvent => !outlookEvent.isAllDay) // Filtrar eventos de todo el día
+      .filter(outlookEvent => {
+        // 🔥 FILTRAR eventos que ya están como meetings en BD
+        const eventStartUTC = outlookEvent.startTime;
+        const eventEndUTC = outlookEvent.endTime;
+
+        // Verificar si existe un meeting en BD para el mismo horario
+        const isDuplicate = existingMeetings.some(meeting => {
+          const meetingStartUTC = meeting.startTime;
+          const meetingEndUTC = meeting.endTime;
+
+          // Comparar con tolerancia de ±5 minutos para account for timezone differences
+          const timeDiffStart = Math.abs(eventStartUTC.getTime() - meetingStartUTC.getTime());
+          const timeDiffEnd = Math.abs(eventEndUTC.getTime() - meetingEndUTC.getTime());
+
+          const tolerance = 5 * 60 * 1000; // 5 minutos en milliseconds
+
+          return timeDiffStart <= tolerance && timeDiffEnd <= tolerance;
+        });
+
+        if (isDuplicate) {
+          console.log(`   🔄 [OUTLOOK_FILTER] Skipping duplicate event: "${outlookEvent.title}" (already in meetings DB)`);
+          return false;
+        }
+
+        return true;
+      })
+      .map(outlookEvent => {
+        // 🔧 QUICK FIX: NO convertir timezone - asumir que vienen en timezone local
+        let startFormatted, endFormatted;
+
+        if (outlookEvent.startTime instanceof Date) {
+          startFormatted = format(outlookEvent.startTime, 'HH:mm');
+        } else {
+          const startDate = parseISO(outlookEvent.startTime as string);
+          startFormatted = format(startDate, 'HH:mm');
+        }
+
+        if (outlookEvent.endTime instanceof Date) {
+          endFormatted = format(outlookEvent.endTime, 'HH:mm');
+        } else {
+          const endDate = parseISO(outlookEvent.endTime as string);
+          endFormatted = format(endDate, 'HH:mm');
+        }
+
+        console.log(`🔧 [OUTLOOK_NO_CONVERSION] "${outlookEvent.title}": ${startFormatted}-${endFormatted}`);
+
+        return {
+          title: outlookEvent.title,
+          start: startFormatted,
+          end: endFormatted,
+          status: outlookEvent.status ?? "confirmed"
+        };
+      });
+    
+    // // Log de eventos que bloquean
+    eventsInUserTz.forEach(outlookEvent => {
+      if (outlookEvent.status === 'confirmed') {
+        console.log(`   ✅ Including Outlook blocking event: "${outlookEvent.title}" (${outlookEvent.status})`);
+      }
+    });
+
+    return eventsInUserTz;
+
+  } catch (error) {
+    console.warn('⚠️ [OUTLOOK_CALENDAR] Failed to fetch Outlook calendar events:', error);
+    return [];
+  }
 }

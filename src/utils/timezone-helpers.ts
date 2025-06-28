@@ -101,20 +101,39 @@ export function checkSlotConflicts(
   const slotEndDate = createDateInUserTimezone(dateStr, slotEnd, timezone);
   
   // Verificar conflictos con meetings de BD (ya convertidas a timezone del usuario)
+  // for (const meeting of meetings) {
+  //   if (meeting.status === 'SCHEDULED' && 
+  //       slotStartDate < meeting.endTime && 
+  //       slotEndDate > meeting.startTime) {
+  //     return {
+  //       hasConflict: true,
+  //       conflictDetail: {
+  //         type: 'meeting',
+  //         guestName: meeting.guestName,
+  //         meetingTime: `${format(meeting.startTime, 'HH:mm')}-${format(meeting.endTime, 'HH:mm')}`
+  //       }
+  //     };
+  //   }
+  // }
+
   for (const meeting of meetings) {
-    if (meeting.status === 'SCHEDULED' && 
-        slotStartDate < meeting.endTime && 
-        slotEndDate > meeting.startTime) {
+  if (meeting.status === 'SCHEDULED') {
+    // Convertir meeting times a HH:mm strings para comparación consistente
+    const meetingStart = format(meeting.startTime, 'HH:mm');
+    const meetingEnd = format(meeting.endTime, 'HH:mm');
+    
+    if (timeRangesOverlap(slotStart, slotEnd, meetingStart, meetingEnd)) {
       return {
         hasConflict: true,
         conflictDetail: {
           type: 'meeting',
           guestName: meeting.guestName,
-          meetingTime: `${format(meeting.startTime, 'HH:mm')}-${format(meeting.endTime, 'HH:mm')}`
+          meetingTime: `${meetingStart}-${meetingEnd}`
         }
       };
     }
   }
+}
   
   // Verificar conflictos con eventos de calendario (ya en formato HH:mm)
   for (const event of calendarEvents) {

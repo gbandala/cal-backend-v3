@@ -498,11 +498,11 @@ export const getOutlookCalendarEvents = async (
   date: string,
   timezone: string = 'UTC'
 ): Promise<CalendarEvent[]> => {
-  console.log('📅 [OUTLOOK_SERVICE] Getting calendar events:', {
-    calendarId,
-    date,
-    timezone
-  });
+  // console.log('📅 [OUTLOOK_SERVICE] Getting calendar events:', {
+  //   calendarId,
+  //   date,
+  //   timezone
+  // });
 
   try {
     // Construir fechas de inicio y fin del día en formato ISO
@@ -526,12 +526,12 @@ export const getOutlookCalendarEvents = async (
 
     const fullUrl = `${eventsUrl}?${queryParams.toString()}`;
 
-    console.log('🔍 [OUTLOOK_SERVICE] Query parameters:', {
-      url: fullUrl,
-      calendarId,
-      dateRange: `${dayStart} - ${dayEnd}`,
-      timezone
-    });
+    // console.log('🔍 [OUTLOOK_SERVICE] Query parameters:', {
+    //   url: fullUrl,
+    //   calendarId,
+    //   dateRange: `${dayStart} - ${dayEnd}`,
+    //   timezone
+    // });
 
     // Realizar consulta a Microsoft Graph API
     const response = await fetch(fullUrl, {
@@ -613,13 +613,13 @@ export const getOutlookCalendarEvents = async (
         return event;
       });
 
-    console.log('✅ [OUTLOOK_SERVICE] Events retrieved successfully:', {
-      calendarId,
-      date,
-      eventsCount: events.length,
-      allDayEvents: events.filter(e => e.isAllDay).length,
-      timedEvents: events.filter(e => !e.isAllDay).length
-    });
+    // console.log('✅ [OUTLOOK_SERVICE] Events retrieved successfully:', {
+    //   calendarId,
+    //   date,
+    //   eventsCount: events.length,
+    //   allDayEvents: events.filter(e => e.isAllDay).length,
+    //   timedEvents: events.filter(e => !e.isAllDay).length
+    // });
 
     // Log de eventos para debugging
     events.forEach(event => {
