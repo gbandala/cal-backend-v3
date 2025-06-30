@@ -8,11 +8,12 @@ import { DayOfWeekEnum } from "../database/entities/day-availability";
 import { Event } from "../database/entities/event.entity";
 import { Integration } from "../database/entities/integration.entity";
 import { IntegrationAppTypeEnum } from "../enums/integration.enum";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays,addMinutes, format, parseISO } from "date-fns";
 import { EventLocationEnumType } from "../enums/EventLocationEnum";
 import { Between } from "typeorm";
 import { Meeting } from "../database/entities/meeting.entity";
 import { MeetingStatus } from "../enums/meeting.enum";
+
 
 import {
   convertMeetingsToUserTimezone,
@@ -221,13 +222,125 @@ export const getAvailabilityForPublicEventService = async (
   }
 };
 
+function timeStringToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+// function generateAvailableTimeSlotsWithTimezone(
+//   startTime: string,        // "09:00"
+//   endTime: string,          // "17:00"
+//   duration: number,         // 60 minutos
+//   meetings: Array<{ startTime: Date; endTime: Date; guestName?: string; status: string }>,
+//   calendarEvents: Array<{ start: string; end: string; title: string; status: string }>,
+//   dateStr: string,          // "2025-06-27"
+//   timeGap: number = 30,
+//   timezone: string
+// ): {
+//   availableSlots: string[],
+//   blockedSlots: Array<{ slot: string; reason: string; value: string; timeRange: string }>
+// } {
+
+//   console.log('🔍 [SLOTS] Generating slots for ' + dateStr + ':', {
+//     startTime,
+//     endTime,
+//     duration: duration + 'min',
+//     timeGap: timeGap + 'min',
+//     meetingsCount: meetings.length,
+//     calendarEventsCount: calendarEvents.length,
+//     isToday: format(new Date(), 'yyyy-MM-dd') === dateStr
+//   });
+
+//   // 🔥 LOG DETALLADO DE CONFLICTOS PARA DEBUGGING
+//   console.log('📋 [SLOTS] Meetings blocking slots:');
+//   meetings.forEach(meeting => {
+//     const startInUserTz = convertUTCToUserTimezone(meeting.startTime, timezone);
+//     const endInUserTz = convertUTCToUserTimezone(meeting.endTime, timezone);
+//     console.log(`   🚫 Meeting: "${meeting.guestName}" ${format(startInUserTz, 'HH:mm')}-${format(endInUserTz, 'HH:mm')}`);
+//   });
+
+//   console.log('📋 [SLOTS] Calendar events blocking slots:');
+//   calendarEvents.forEach(event => {
+//     if (event.status === 'confirmed') {
+//       console.log(`   🚫 Calendar: "${event.title}" ${event.start}-${event.end}`);
+//     }
+//   });
+
+//   const availableSlots: string[] = [];
+//   const blockedSlots: Array<{ slot: string; reason: string; value: string; timeRange: string }> = [];
+
+//   // Generar todos los slots posibles en timezone del usuario
+//   const allSlots = generateTimeSlotsInUserTimezone(
+//     startTime,
+//     endTime,
+//     timeGap,
+//     dateStr,
+//     timezone
+//   );
+
+//   // Filtrar slots considerando duración del evento
+//   for (const slotStart of allSlots) {
+//     // Calcular cuándo terminaría este slot
+//     const slotStartParts = slotStart.split(':');
+//     const slotStartMinutes = parseInt(slotStartParts[0]) * 60 + parseInt(slotStartParts[1]);
+//     const slotEndMinutes = slotStartMinutes + duration;
+//     const slotEndHours = Math.floor(slotEndMinutes / 60);
+//     const slotEndMins = slotEndMinutes % 60;
+//     const slotEnd = `${slotEndHours.toString().padStart(2, '0')}:${slotEndMins.toString().padStart(2, '0')}`;
+
+//     // Verificar que el slot completo cabe en horario disponible
+//     const endTimeParts = endTime.split(':');
+//     const endTimeMinutes = parseInt(endTimeParts[0]) * 60 + parseInt(endTimeParts[1]);
+
+//     if (slotEndMinutes > endTimeMinutes) {
+//       continue; // Slot no cabe en horario disponible
+//     }
+
+//     // Verificar conflictos
+//     const conflictCheck = checkSlotConflicts(
+//       slotStart,
+//       slotEnd,
+//       dateStr,
+//       timezone,
+//       meetings,
+//       calendarEvents
+//     );
+
+//     if (!conflictCheck.hasConflict) {
+//       console.log(`   ✅ [AVAILABLE] Slot ${slotStart}-${slotEnd} is available`);
+//       availableSlots.push(slotStart);
+//     } else {
+//       // ✅ CAPTURAR INFORMACIÓN DEL SLOT BLOQUEADO
+//       const conflictTitle = conflictCheck.conflictDetail?.title || conflictCheck.conflictDetail?.guestName || 'Unknown';
+//       const conflictTime = conflictCheck.conflictDetail?.eventTime || conflictCheck.conflictDetail?.meetingTime || 'Unknown time';
+//       const reason = conflictCheck.conflictDetail?.type === 'meeting' ? 'meeting' : 'calendar';
+
+//       // 🔥 AGREGAR AL ARRAY DE SLOTS BLOQUEADOS
+//       blockedSlots.push({
+//         slot: slotStart,
+//         reason: reason,
+//         value: conflictTitle,
+//         timeRange: conflictTime
+//       });
+
+//       console.log(`   ❌ [CONFLICT] Slot ${slotStart}-${slotEnd} conflicts with ${conflictCheck.conflictDetail?.type}: "${conflictTitle}" (${conflictTime})`);
+//     }
+//   }
+
+//   console.log(`✅ [SLOTS] Generated ${availableSlots.length} available slots and ${blockedSlots.length} blocked slots for ${dateStr}`);
+//   console.log('🚫 [BLOCKED] Blocked slots:', blockedSlots);
+//   console.log('------------------------------------------------------------------');
+
+//   return { availableSlots, blockedSlots };
+// }
+
 function generateAvailableTimeSlotsWithTimezone(
   startTime: string,        // "09:00"
   endTime: string,          // "17:00"
   duration: number,         // 60 minutos
   meetings: Array<{ startTime: Date; endTime: Date; guestName?: string; status: string }>,
   calendarEvents: Array<{ start: string; end: string; title: string; status: string }>,
-  dateStr: string,          // "2025-06-27"
+  dateStr: string,          // "2025-06-30"
   timeGap: number = 30,
   timezone: string
 ): {
@@ -263,6 +376,23 @@ function generateAvailableTimeSlotsWithTimezone(
   const availableSlots: string[] = [];
   const blockedSlots: Array<{ slot: string; reason: string; value: string; timeRange: string }> = [];
 
+  // ✅ NUEVO: Verificar si es hoy y calcular hora mínima
+  const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
+  let minimumStartTime: string | null = null;
+
+  if (isToday) {
+    // Obtener hora actual en el timezone del usuario
+    const now = new Date();
+    const nowInUserTz = convertUTCToUserTimezone(now, timezone);
+    
+    // Agregar margen de 30 minutos (o el timeGap configurado)
+    const minimumBookingTime = addMinutes(nowInUserTz, Math.max(30, timeGap));
+    minimumStartTime = format(minimumBookingTime, 'HH:mm');
+    
+    console.log(`⏰ [TODAY_FILTER] Current time in ${timezone}: ${format(nowInUserTz, 'HH:mm')}`);
+    console.log(`⏰ [TODAY_FILTER] Minimum booking time: ${minimumStartTime} (${Math.max(30, timeGap)} min margin)`);
+  }
+
   // Generar todos los slots posibles en timezone del usuario
   const allSlots = generateTimeSlotsInUserTimezone(
     startTime,
@@ -274,6 +404,25 @@ function generateAvailableTimeSlotsWithTimezone(
 
   // Filtrar slots considerando duración del evento
   for (const slotStart of allSlots) {
+    // ✅ NUEVO: Filtrar slots que ya pasaron o están demasiado cerca si es hoy
+    if (isToday && minimumStartTime) {
+      const slotStartMinutes = timeStringToMinutes(slotStart);
+      const minimumStartMinutes = timeStringToMinutes(minimumStartTime);
+      
+      if (slotStartMinutes < minimumStartMinutes) {
+        // Agregar al array de slots bloqueados con razón específica
+        blockedSlots.push({
+          slot: slotStart,
+          reason: 'past_time',
+          value: 'Slot has passed or is too close to current time',
+          timeRange: `Current time + ${Math.max(30, timeGap)} min margin`
+        });
+        
+        console.log(`   ⏰ [TIME_FILTER] Slot ${slotStart} blocked - too close to current time`);
+        continue; // Saltar este slot
+      }
+    }
+
     // Calcular cuándo terminaría este slot
     const slotStartParts = slotStart.split(':');
     const slotStartMinutes = parseInt(slotStartParts[0]) * 60 + parseInt(slotStartParts[1]);
